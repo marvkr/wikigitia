@@ -45,7 +45,6 @@ export const analysisJobs = pgTable("analysis_jobs", {
   id: text("id").primaryKey(),
   repositoryId: text("repository_id").references(() => repositories.id),
   status: analysisStatusEnum("status").default("pending").notNull(),
-  progress: varchar("progress", { length: 50 }).default("0%"),
   result: json("result"),
   errorMessage: text("error_message"),
   startedAt: timestamp("started_at").defaultNow(),

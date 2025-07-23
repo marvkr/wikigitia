@@ -48,6 +48,24 @@ function HomeContent() {
     setReAnalyzeUrl(null);
   };
 
+  // Clear analysis state when navigating back to home page
+  useEffect(() => {
+    const handleRouteChange = () => {
+      // If we're on the home page and there's no active analysis, clear state
+      if (window.location.pathname === "/" && !searchParams.get("reanalyze")) {
+        setCurrentJobId(null);
+        setCurrentRepositoryId(null);
+      }
+    };
+
+    // Listen for browser back/forward navigation
+    window.addEventListener("popstate", handleRouteChange);
+
+    return () => {
+      window.removeEventListener("popstate", handleRouteChange);
+    };
+  }, [searchParams]);
+
   // Show loading spinner while redirecting to wiki
   if (currentRepositoryId) {
     return (

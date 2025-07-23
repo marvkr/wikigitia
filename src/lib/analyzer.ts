@@ -71,7 +71,6 @@ export class AIAnalyzer {
     try {
       const fileStructure = this.buildFileStructure(files);
       const keyFiles = await this.identifyKeyFiles(owner, repo, files);
-
       const prompt = this.buildAnalysisPrompt(
         owner,
         repo,
@@ -117,9 +116,9 @@ Focus on subsystems that would be meaningful to a developer trying to understand
       });
 
       // Parse the natural language response
-      return this.parseAnalysisResponse(result.text);
+      return this.parseAnalysisResponse(result.text, files);
     } catch (error) {
-      console.error("AI Analysis error:", error);
+      console.error("AI analysis failed:", error);
       throw new Error(`AI analysis failed: ${error}`);
     }
   }
@@ -214,48 +213,55 @@ Focus on subsystems that would be meaningful to a developer trying to understand
   }
 
   private static parseAnalysisResponse(
-    text: string
+    response: string,
+    files: FileStructure[]
   ): InternalRepositoryAnalysis {
-    const lines = text
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line);
-
+    const lines = response.split("\n");
     let summary = "";
     const subsystems: SubsystemAnalysis[] = [];
     let currentSubsystem: Partial<SubsystemAnalysis> | null = null;
 
+    // Create a set of valid file paths for quick lookup
+    const validFilePaths = new Set(files.map((f) => f.path));
+
     for (const line of lines) {
-      if (line.startsWith("SUMMARY:")) {
-        summary = line.replace("SUMMARY:", "").trim();
-      } else if (line.startsWith("SUBSYSTEM:")) {
-        // Save previous subsystem if exists
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      if (trimmed.startsWith("SUMMARY:")) {
+        summary = trimmed.replace("SUMMARY:", "").trim();
+      } else if (trimmed.startsWith("SUBSYSTEM:")) {
         if (currentSubsystem && currentSubsystem.name) {
-          subsystems.push(this.completeSubsystem(currentSubsystem));
+          subsystems.push(currentSubsystem as SubsystemAnalysis);
         }
-        // Start new subsystem
         currentSubsystem = {
-          name: line.replace("SUBSYSTEM:", "").trim(),
+          name: trimmed.replace("SUBSYSTEM:", "").trim(),
+          files: [],
+          entryPoints: [],
+          dependencies: [],
         };
       } else if (currentSubsystem) {
-        if (line.startsWith("TYPE:")) {
-          const type = line.replace("TYPE:", "").trim().toLowerCase();
+        if (trimmed.startsWith("TYPE:")) {
+          const type = trimmed.replace("TYPE:", "").trim().toLowerCase();
           currentSubsystem.type = this.normalizeType(type);
-        } else if (line.startsWith("DESCRIPTION:")) {
-          currentSubsystem.description = line
+        } else if (trimmed.startsWith("DESCRIPTION:")) {
+          currentSubsystem.description = trimmed
             .replace("DESCRIPTION:", "")
             .trim();
-        } else if (line.startsWith("FILES:")) {
-          const filesStr = line.replace("FILES:", "").trim();
-          currentSubsystem.files = this.parseList(filesStr);
-        } else if (line.startsWith("ENTRY_POINTS:")) {
-          const entryPointsStr = line.replace("ENTRY_POINTS:", "").trim();
-          currentSubsystem.entryPoints = this.parseList(entryPointsStr);
-        } else if (line.startsWith("DEPENDENCIES:")) {
-          const depsStr = line.replace("DEPENDENCIES:", "").trim();
+        } else if (trimmed.startsWith("FILES:")) {
+          const filesStr = trimmed.replace("FILES:", "").trim();
+          currentSubsystem.files = this.parseList(filesStr, validFilePaths);
+        } else if (trimmed.startsWith("ENTRY_POINTS:")) {
+          const entryPointsStr = trimmed.replace("ENTRY_POINTS:", "").trim();
+          currentSubsystem.entryPoints = this.parseList(
+            entryPointsStr,
+            validFilePaths
+          );
+        } else if (trimmed.startsWith("DEPENDENCIES:")) {
+          const depsStr = trimmed.replace("DEPENDENCIES:", "").trim();
           currentSubsystem.dependencies = this.parseList(depsStr);
-        } else if (line.startsWith("COMPLEXITY:")) {
-          const complexity = line
+        } else if (trimmed.startsWith("COMPLEXITY:")) {
+          const complexity = trimmed
             .replace("COMPLEXITY:", "")
             .trim()
             .toLowerCase();
@@ -264,15 +270,22 @@ Focus on subsystems that would be meaningful to a developer trying to understand
       }
     }
 
-    // Don't forget the last subsystem
+    // Add the last subsystem
     if (currentSubsystem && currentSubsystem.name) {
-      subsystems.push(this.completeSubsystem(currentSubsystem));
+      subsystems.push(currentSubsystem as SubsystemAnalysis);
+    }
+
+    // Fallback if no subsystems were parsed
+    if (subsystems.length === 0) {
+      return {
+        summary: summary || "Repository analysis completed",
+        subsystems: this.createFallbackSubsystems(),
+      };
     }
 
     return {
       summary: summary || "Repository analysis completed",
-      subsystems:
-        subsystems.length > 0 ? subsystems : this.createFallbackSubsystems(),
+      subsystems,
     };
   }
 
@@ -310,7 +323,10 @@ Focus on subsystems that would be meaningful to a developer trying to understand
     return "medium";
   }
 
-  private static parseList(str: string): string[] {
+  private static parseList(
+    str: string,
+    validFilePaths?: Set<string>
+  ): string[] {
     if (!str || str === "none" || str === "n/a") return [];
 
     const items = str
@@ -319,7 +335,7 @@ Focus on subsystems that would be meaningful to a developer trying to understand
       .filter((item) => item && item !== "none" && item !== "n/a");
 
     // Filter out invalid file paths - keep only items that look like actual file paths
-    return items.filter((item) => {
+    const filteredItems = items.filter((item) => {
       // Skip items that are clearly descriptions or explanations
       if (item.includes(" ") && !item.includes("/")) return false;
       if (item.includes("(") || item.includes(")")) return false;
@@ -329,12 +345,28 @@ Focus on subsystems that would be meaningful to a developer trying to understand
       if (item.length > 100) return false; // Very long strings are likely descriptions
       if (item.includes("e.g.") || item.includes("such as")) return false;
 
-      // Keep items that look like file paths
-      if (item.includes("/") || item.includes(".")) return true;
+      // For dependencies (no validFilePaths provided), keep library names
+      if (!validFilePaths) {
+        // Keep items that look like library names (no slashes, may have dots)
+        return !item.includes("/");
+      }
+
+      // For file paths, validate against actual repository structure
+      if (validFilePaths.has(item)) {
+        return true;
+      }
+
+      // Keep items that look like file paths but warn about missing files
+      if (item.includes("/") || item.includes(".")) {
+        console.warn(`AI suggested file path that doesn't exist: ${item}`);
+        return false;
+      }
 
       // Skip everything else that doesn't look like a file path
       return false;
     });
+
+    return filteredItems;
   }
 
   private static createFallbackSubsystems(): SubsystemAnalysis[] {

@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, CheckCircle, XCircle, Clock } from "lucide-react";
+import { CheckCircle, Clock, Loader2, XCircle } from "lucide-react";
 import { useGetAnalysisStatus } from "@/hooks/use-get-analysis-status";
 import { useGetWiki } from "@/hooks/use-get-wiki";
 
@@ -19,6 +19,8 @@ interface AnalysisProgressProps {
 }
 
 export function AnalysisProgress({ jobId, onComplete }: AnalysisProgressProps) {
+  console.log(`AnalysisProgress mounted with jobId: ${jobId}`);
+
   const {
     data: analysisStatus,
     isLoading,
@@ -39,17 +41,33 @@ export function AnalysisProgress({ jobId, onComplete }: AnalysisProgressProps) {
     if (!analysisStatus) return;
 
     const status = analysisStatus.status;
-    const progress = analysisStatus.progress;
 
-    // Convert progress string to number
-    const progressNum = parseInt(progress.replace("%", "")) || 0;
-    setProgressValue(progressNum);
+    // Simulate progress based on status
+    if (status === "pending") {
+      setProgressValue(5);
+    } else if (status === "in_progress") {
+      // Gradually increase progress while in progress
+      const interval = setInterval(() => {
+        setProgressValue((prev) => {
+          if (prev < 85) {
+            return prev + Math.random() * 3; // Gradually increase
+          }
+          return prev;
+        });
+      }, 1000);
 
-    if (status === "completed" && analysisStatus.repositoryId) {
-      // Check if wiki is ready
-      if (wikiData?.hasWiki) {
-        onComplete?.(analysisStatus.repositoryId);
+      return () => clearInterval(interval);
+    } else if (status === "completed") {
+      setProgressValue(100);
+
+      if (analysisStatus.repositoryId) {
+        // Check if wiki is ready
+        if (wikiData?.hasWiki) {
+          onComplete?.(analysisStatus.repositoryId);
+        }
       }
+    } else if (status === "failed") {
+      setProgressValue(0);
     }
   }, [analysisStatus, wikiData, onComplete]);
 
@@ -69,6 +87,38 @@ export function AnalysisProgress({ jobId, onComplete }: AnalysisProgressProps) {
       default:
         return <Clock className="h-4 w-4" />;
     }
+  };
+
+  const getStatusText = () => {
+    if (isLoading) return "Initializing analysis...";
+
+    const status = analysisStatus?.status;
+    switch (status) {
+      case "pending":
+        return "Analysis queued - starting soon...";
+      case "in_progress":
+        return "Analyzing repository structure and generating documentation...";
+      case "completed":
+        return "Analysis completed successfully!";
+      case "failed":
+        return "Analysis failed";
+      default:
+        return "Preparing analysis...";
+    }
+  };
+
+  const getProgressText = () => {
+    const status = analysisStatus?.status;
+    if (status === "pending") return "Queued";
+    if (status === "in_progress") {
+      if (progressValue < 20) return "Scanning repository structure...";
+      if (progressValue < 50) return "Analyzing code patterns...";
+      if (progressValue < 80) return "Generating documentation...";
+      return "Finalizing wiki pages...";
+    }
+    if (status === "completed") return "Complete";
+    if (status === "failed") return "Failed";
+    return "Initializing...";
   };
 
   if (error) {
@@ -95,58 +145,36 @@ export function AnalysisProgress({ jobId, onComplete }: AnalysisProgressProps) {
           Repository Analysis
         </CardTitle>
         <CardDescription>
-          Analyzing repository structure and generating documentation...
+          Analyzing repository structure and generating comprehensive
+          documentation
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">
-            {analysisStatus?.status === "completed"
-              ? "Completed"
-              : analysisStatus?.status === "in_progress"
-              ? "In Progress"
-              : analysisStatus?.status === "pending"
-              ? "Pending"
-              : analysisStatus?.status === "failed"
-              ? "Failed"
-              : "Progress"}
+          <span className="text-sm font-medium">{getProgressText()}</span>
+          <span className="text-sm text-muted-foreground">
+            {Math.round(progressValue)}%
           </span>
         </div>
 
         <Progress value={progressValue} className="w-full" />
 
-        <div className="text-sm text-muted-foreground">
-          {analysisStatus?.progress || "Initializing..."}
-        </div>
+        <div className="text-sm text-muted-foreground">{getStatusText()}</div>
 
         {analysisStatus?.error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-600">{analysisStatus.error}</p>
+          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+            <p className="text-sm text-destructive">{analysisStatus.error}</p>
           </div>
         )}
 
-        {analysisStatus?.status === "completed" &&
-          analysisStatus.repositoryId && (
-            <div className="pt-4 border-t">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium text-green-600">
-                    Analysis Complete!
-                  </h4>
-                  <p className="text-sm text-muted-foreground">
-                    Found {analysisStatus.result?.subsystemCount || 0}{" "}
-                    subsystems. Wiki is being generated automatically...
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-green-500" />
-                  <span className="text-sm text-green-600">
-                    Generating Wiki
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
+        {analysisStatus?.result && (
+          <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-md dark:bg-green-400/10 dark:border-green-400/20">
+            <p className="text-sm text-green-700 dark:text-green-400">
+              Analysis completed! Found {analysisStatus.result.subsystemCount}{" "}
+              subsystems.
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

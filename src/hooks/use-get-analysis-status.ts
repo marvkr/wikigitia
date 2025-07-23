@@ -33,13 +33,16 @@ export const useGetAnalysisStatus = (jobId?: string) => {
     },
     enabled: !!jobId,
     refetchInterval: (query) => {
-      // Refetch every 2 seconds if analysis is in progress
-      if (
-        query.state.data?.status === "in_progress" ||
-        query.state.data?.status === "pending"
-      ) {
+      // Only refetch if analysis is still in progress
+      const status = query.state.data?.status;
+      const shouldPoll = status === "in_progress" || status === "pending";
+
+      if (shouldPoll) {
+        console.log(`Polling analysis status: ${status}`);
         return 2000;
       }
+
+      console.log(`Stopped polling analysis status: ${status}`);
       return false;
     },
   });

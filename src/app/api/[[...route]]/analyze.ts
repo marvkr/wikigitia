@@ -1,15 +1,12 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { db } from "@/db/drizzle";
-import { repositories, analysisJobs, subsystems } from "@/db/schema";
-
+import { repositories, analysisJobs } from "@/db/schema";
 import { GitHubService } from "@/lib/github";
-import { AIAnalyzer } from "@/lib/analyzer";
-import { WikiGenerator } from "@/lib/wiki-generator";
-import { wikiPages } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { nanoid } from "nanoid";
+import { inngest } from "@/lib/inngest";
 
 const app = new Hono()
   .post(
@@ -68,10 +65,18 @@ const app = new Hono()
           id: jobId,
           repositoryId,
           status: "pending",
-          progress: "0%",
         });
 
-        analyzeRepositoryInBackground(jobId, repositoryId, owner, repo);
+        // Send event to Inngest to start analysis
+        await inngest.send({
+          name: "repository/analyze",
+          data: {
+            jobId,
+            repositoryId,
+            owner,
+            repo,
+          },
+        });
 
         return c.json(
           {
@@ -119,7 +124,6 @@ const app = new Hono()
           {
             jobId,
             status: job.status,
-            progress: job.progress,
             startedAt: job.startedAt,
             completedAt: job.completedAt,
             result: job.result,
@@ -134,164 +138,5 @@ const app = new Hono()
       }
     }
   );
-
-async function analyzeRepositoryInBackground(
-  jobId: string,
-  repositoryId: string,
-  owner: string,
-  repo: string
-) {
-  try {
-    await db
-      .update(analysisJobs)
-      .set({
-        status: "in_progress",
-        progress: "10%",
-      })
-      .where(eq(analysisJobs.id, jobId));
-
-    const files = await GitHubService.getAllFiles(owner, repo);
-
-    await db
-      .update(analysisJobs)
-      .set({ progress: "30%" })
-      .where(eq(analysisJobs.id, jobId));
-
-    const analysis = await AIAnalyzer.analyzeRepository(owner, repo, files);
-
-    await db
-      .update(analysisJobs)
-      .set({ progress: "70%" })
-      .where(eq(analysisJobs.id, jobId));
-
-    for (const subsystem of analysis.subsystems) {
-      const subsystemId = nanoid();
-      await db.insert(subsystems).values({
-        id: subsystemId,
-        repositoryId,
-        ...subsystem,
-      });
-    }
-
-    await db
-      .update(repositories)
-      .set({ analyzedAt: new Date() })
-      .where(eq(repositories.id, repositoryId));
-
-    await db
-      .update(analysisJobs)
-      .set({
-        status: "completed",
-        progress: "100%",
-        completedAt: new Date(),
-        result: {
-          summary: analysis.summary,
-          subsystemCount: analysis.subsystems.length,
-        },
-      })
-      .where(eq(analysisJobs.id, jobId));
-
-    // Automatically start wiki generation after analysis completes
-    await generateWikiForRepository(repositoryId, owner, repo);
-  } catch (error) {
-    console.error("Background analysis error:", error);
-
-    await db
-      .update(analysisJobs)
-      .set({
-        status: "failed",
-        errorMessage: error instanceof Error ? error.message : "Unknown error",
-      })
-      .where(eq(analysisJobs.id, jobId));
-  }
-}
-
-async function generateWikiForRepository(
-  repositoryId: string,
-  owner: string,
-  repo: string
-) {
-  try {
-    // Get the repository and its subsystems
-    const [repository] = await db
-      .select()
-      .from(repositories)
-      .where(eq(repositories.id, repositoryId))
-      .limit(1);
-
-    if (!repository) {
-      console.error("Repository not found for wiki generation");
-      return;
-    }
-
-    const repoSubsystems = await db
-      .select()
-      .from(subsystems)
-      .where(eq(subsystems.repositoryId, repositoryId));
-
-    if (repoSubsystems.length === 0) {
-      console.error("No subsystems found for wiki generation");
-      return;
-    }
-
-    // Check if wiki already exists
-    const existingPages = await db
-      .select()
-      .from(wikiPages)
-      .where(eq(wikiPages.subsystemId, repoSubsystems[0].id))
-      .limit(1);
-
-    if (existingPages.length > 0) {
-      console.log("Wiki already exists, skipping generation");
-      return;
-    }
-
-    // Generate wiki pages for each subsystem
-    let successCount = 0;
-    for (const subsystem of repoSubsystems) {
-      try {
-        console.log(`Processing subsystem: ${subsystem.name}`);
-
-        const wikiContent = await WikiGenerator.generateWikiPage(
-          {
-            ...subsystem,
-            description: subsystem.description || "No description available",
-            complexity: subsystem.complexity || "medium",
-            files: subsystem.files || [],
-            entryPoints: subsystem.entryPoints || [],
-            dependencies: subsystem.dependencies || [],
-          },
-          owner,
-          repo
-        );
-
-        const pageId = nanoid();
-        await db.insert(wikiPages).values({
-          id: pageId,
-          subsystemId: subsystem.id,
-          title: wikiContent.title,
-          content: wikiContent.content,
-          citations: wikiContent.citations,
-          tableOfContents: wikiContent.tableOfContents,
-        });
-
-        console.log(`✓ Generated wiki page for subsystem: ${subsystem.name}`);
-        successCount++;
-      } catch (error) {
-        console.error(
-          `✗ Failed to generate wiki for subsystem ${subsystem.name}:`,
-          error instanceof Error ? error.message : error
-        );
-        // Continue with other subsystems even if one fails
-      }
-    }
-
-    console.log(
-      `Wiki generation completed for repository: ${repository.name} (${successCount}/${repoSubsystems.length} subsystems successful)`
-    );
-  } catch (error) {
-    console.error("Wiki generation error:", error);
-  }
-}
 
 export default app;
