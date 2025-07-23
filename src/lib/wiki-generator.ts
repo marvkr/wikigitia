@@ -1,8 +1,8 @@
-import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { GitHubService } from "./github";
 import { Citation, TableOfContentsItem } from "@/db/schema";
+import { modelGPT41 } from "./llm-providers";
 
 interface WikiContent {
   title: string;
@@ -127,10 +127,13 @@ export class WikiGenerator {
   ): Promise<WikiContent> {
     const prompt = this.buildWikiPrompt(subsystem, relevantCode, owner, repo);
 
-    const { object } = await generateObject({
-      model: openai("gpt-4-turbo-2024-04-09"), // GPT-4.1
+    const result = await generateObject({
+      model: modelGPT41,
       schema: WikiContentSchema,
-      system: `You are a technical documentation expert creating comprehensive wiki pages for software subsystems.
+      messages: [
+        {
+          role: "system",
+          content: `You are a technical documentation expert creating comprehensive wiki pages for software subsystems.
 
 Your task is to create clear, well-structured documentation that helps developers understand:
 1. What this subsystem does and why it exists
@@ -154,9 +157,16 @@ Guidelines:
 - Generate realistic line numbers based on content position
 - Organize content with clear headings and sections
 - Make it useful for developers new to the codebase`,
-      prompt,
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
       temperature: 0.3,
     });
+
+    const { object } = result;
 
     const wikiContent = object as WikiContent;
 

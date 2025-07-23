@@ -1,8 +1,8 @@
-import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { GitHubService } from "./github";
 import { nanoid } from "nanoid";
+import { modelGPT41 } from "./llm-providers";
 
 interface SubsystemAnalysis {
   name: string;
@@ -105,10 +105,13 @@ export class AIAnalyzer {
         keyFiles
       );
 
-      const { object } = await generateObject({
-        model: openai("gpt-4-turbo-2024-04-09"), // GPT-4.1
+      const result = await generateObject({
+        model: modelGPT41,
         schema: AnalysisSchema,
-        system: `You are an expert software architect analyzing GitHub repositories. Your task is to identify high-level subsystems that balance both feature-driven and technical perspectives. Focus on key features, user services, authentication flows, data layers, CLI tools, and core architectural components.
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert software architect analyzing GitHub repositories. Your task is to identify high-level subsystems that balance both feature-driven and technical perspectives. Focus on key features, user services, authentication flows, data layers, CLI tools, and core architectural components.
 
 Analyze the repository structure and identify 3-8 meaningful subsystems that would help a developer understand the codebase. Each subsystem should represent either:
 1. A major feature or user-facing capability
@@ -124,9 +127,16 @@ For each subsystem, provide:
 - Main entry points (files that serve as interfaces or starting points)
 - External dependencies it relies on
 - Complexity assessment based on code structure and responsibilities`,
-        prompt,
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
         temperature: 0.3,
       });
+
+      const { object } = result;
 
       return object as InternalRepositoryAnalysis;
     } catch (error) {

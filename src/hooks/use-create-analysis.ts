@@ -31,7 +31,8 @@ export const useCreateAnalysis = () => {
     onSuccess: (data) => {
       toast({
         title: "Analysis Started",
-        description: `Repository analysis has been queued. Job ID: ${data.jobId}`,
+        description:
+          "Repository analysis has been queued and will begin shortly.",
       });
 
       // Invalidate related queries
