@@ -13,7 +13,7 @@ interface AnalyzeRepositoryResponse {
   message: string;
 }
 
-export const useAnalyzeRepository = () => {
+export const useCreateAnalysis = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({

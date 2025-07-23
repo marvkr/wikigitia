@@ -176,7 +176,23 @@ Important guidelines:
       throw new Error("No response from OpenAI");
     }
 
-    const parsed = JSON.parse(response) as WikiContent;
+    // Clean the response to ensure it's valid JSON
+    let cleanedResponse = response.trim();
+    
+    // Remove markdown code blocks if present
+    if (cleanedResponse.startsWith('```json')) {
+      cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (cleanedResponse.startsWith('```')) {
+      cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+
+    let parsed: WikiContent;
+    try {
+      parsed = JSON.parse(cleanedResponse) as WikiContent;
+    } catch (error) {
+      console.error("Failed to parse OpenAI response as JSON:", cleanedResponse);
+      throw new Error(`Failed to parse OpenAI response as JSON: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
 
     // Generate GitHub URLs for citations
     parsed.citations = parsed.citations.map((citation) => ({

@@ -88,6 +88,14 @@
   }
 }
 
+/* Force text wrapping in sidebars */
+.w-80 * {
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+  max-width: 100% !important;
+}
+
 .dark {
   --sidebar: hsl(240 5.9% 10%);
   --sidebar-foreground: hsl(240 4.8% 95.9%);

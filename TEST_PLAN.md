@@ -170,7 +170,7 @@ pnpm tsx test-runner.ts # Manual validation (✅ Working)
 
 ### 🎯 **Test Structure**
 
-```
+```bash
 tests/
 └── core.test.ts        # All core functionality tests
 ```

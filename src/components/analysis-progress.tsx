@@ -12,7 +12,6 @@ import { Progress } from "@/components/ui/progress";
 import { Loader2, CheckCircle, XCircle, Clock } from "lucide-react";
 import { useGetAnalysisStatus } from "@/hooks/use-get-analysis-status";
 import { useGetWiki } from "@/hooks/use-get-wiki";
-import { useSearchHistory } from "@/hooks/use-search-history";
 
 interface AnalysisProgressProps {
   jobId: string;
@@ -35,7 +34,6 @@ export function AnalysisProgress({ jobId, onComplete }: AnalysisProgressProps) {
   );
 
   const [progressValue, setProgressValue] = useState(0);
-  const { addToHistory } = useSearchHistory();
 
   useEffect(() => {
     if (!analysisStatus) return;
@@ -50,23 +48,10 @@ export function AnalysisProgress({ jobId, onComplete }: AnalysisProgressProps) {
     if (status === "completed" && analysisStatus.repositoryId) {
       // Check if wiki is ready
       if (wikiData?.hasWiki) {
-        // Add to search history
-        const repository = wikiData.repository;
-        console.log("Adding repository to history:", repository);
-        addToHistory({
-          repositoryId: analysisStatus.repositoryId,
-          url: repository.url,
-          owner: repository.owner,
-          name: repository.name,
-          description: repository.description,
-          language: repository.language,
-          stars: repository.stars,
-        });
-
         onComplete?.(analysisStatus.repositoryId);
       }
     }
-  }, [analysisStatus, wikiData, onComplete, addToHistory]);
+  }, [analysisStatus, wikiData, onComplete]);
 
   const getStatusIcon = () => {
     if (isLoading) return <Loader2 className="h-4 w-4 animate-spin" />;
@@ -109,7 +94,9 @@ export function AnalysisProgress({ jobId, onComplete }: AnalysisProgressProps) {
           {getStatusIcon()}
           Repository Analysis
         </CardTitle>
-        {!isLoading && <CardDescription>Job ID: {jobId}</CardDescription>}
+        <CardDescription>
+          Analyzing repository structure and generating documentation...
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between">

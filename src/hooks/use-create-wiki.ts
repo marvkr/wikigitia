@@ -12,7 +12,7 @@ interface GenerateWikiResponse {
   subsystemCount: number;
 }
 
-export const useGenerateWiki = () => {
+export const useCreateWiki = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({

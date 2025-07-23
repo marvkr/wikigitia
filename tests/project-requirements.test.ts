@@ -949,24 +949,25 @@ describe("PROJECT.md Requirements - API Endpoints", () => {
 
 describe("PROJECT.md Requirements - Frontend Integration", () => {
   describe("TanStack Query Hooks", () => {
-    it("should provide useAnalyzeRepository mutation", async () => {
+    it("should provide useCreateAnalysis mutation", async () => {
       const hookModule = await import(
-        "../src/hooks/use-analyze-repository"
+        "../src/hooks/use-create-analysis"
       ).catch(() => ({
-        useAnalyzeRepository: () => {
-          throw new Error("useAnalyzeRepository hook not implemented yet");
+        useCreateAnalysis: () => {
+          throw new Error("useCreateAnalysis hook not implemented yet");
         },
       }));
 
-      const useAnalyzeRepository =
-        (hookModule as any).useAnalyzeRepository ||
+      const useCreateAnalysis =
+        (hookModule as any).useCreateAnalysis ||
         (() => {
-          throw new Error("useAnalyzeRepository hook not implemented yet");
+          throw new Error("useCreateAnalysis hook not implemented yet");
         });
 
+      // Test should pass now since hook is implemented
       expect(() => {
-        useAnalyzeRepository();
-      }).toThrow("useAnalyzeRepository hook not implemented yet");
+        useCreateAnalysis();
+      }).not.toThrow();
 
       // When implemented, should provide mutation
       // const { mutate, isPending, error } = useAnalyzeRepository();
@@ -989,33 +990,35 @@ describe("PROJECT.md Requirements - Frontend Integration", () => {
           throw new Error("useGetAnalysisStatus hook not implemented yet");
         });
 
+      // Test should pass now since hook is implemented
       expect(() => {
         useGetAnalysisStatus("test-job-123");
-      }).toThrow("useGetAnalysisStatus hook not implemented yet");
+      }).not.toThrow();
 
       // When implemented, should provide query
       // const { data, isLoading, error } = useGetAnalysisStatus("test-job-123");
       // expect(typeof isLoading).toBe("boolean");
     });
 
-    it("should provide useGenerateWiki mutation", async () => {
-      const hookModule = await import("../src/hooks/use-generate-wiki").catch(
+    it("should provide useCreateWiki mutation", async () => {
+      const hookModule = await import("../src/hooks/use-create-wiki").catch(
         () => ({
-          useGenerateWiki: () => {
-            throw new Error("useGenerateWiki hook not implemented yet");
+          useCreateWiki: () => {
+            throw new Error("useCreateWiki hook not implemented yet");
           },
         })
       );
 
-      const useGenerateWiki =
-        (hookModule as any).useGenerateWiki ||
+      const useCreateWiki =
+        (hookModule as any).useCreateWiki ||
         (() => {
-          throw new Error("useGenerateWiki hook not implemented yet");
+          throw new Error("useCreateWiki hook not implemented yet");
         });
 
+      // Test should pass now since hook is implemented
       expect(() => {
-        useGenerateWiki();
-      }).toThrow("useGenerateWiki hook not implemented yet");
+        useCreateWiki();
+      }).not.toThrow();
 
       // When implemented, should provide mutation
       // const { mutate, isPending, error } = useGenerateWiki();
@@ -1037,9 +1040,10 @@ describe("PROJECT.md Requirements - Frontend Integration", () => {
           throw new Error("useGetWiki hook not implemented yet");
         });
 
+      // Test should pass now since hook is implemented
       expect(() => {
         useGetWiki("test-wiki-123");
-      }).toThrow("useGetWiki hook not implemented yet");
+      }).not.toThrow();
 
       // When implemented, should provide query
       // const { data, isLoading, error } = useGetWiki("test-wiki-123");
@@ -1050,13 +1054,13 @@ describe("PROJECT.md Requirements - Frontend Integration", () => {
   describe("React Components", () => {
     it("should render repository input form with validation", async () => {
       const componentExists = await import(
-        "../src/components/RepositoryInput"
+        "../src/components/repository-input-form"
       ).then(
         () => true,
         () => false
       );
 
-      expect(componentExists).toBe(false);
+      expect(componentExists).toBe(true);
 
       // When implemented, should render properly
       // const { render } = require("@testing-library/react");
@@ -1068,13 +1072,13 @@ describe("PROJECT.md Requirements - Frontend Integration", () => {
 
     it("should render analysis progress component", async () => {
       const componentExists = await import(
-        "../src/components/AnalysisProgress"
+        "../src/components/analysis-progress"
       ).then(
         () => true,
         () => false
       );
 
-      expect(componentExists).toBe(false);
+      expect(componentExists).toBe(true);
 
       // When implemented, should show progress
       // const { render } = require("@testing-library/react");
@@ -1085,12 +1089,12 @@ describe("PROJECT.md Requirements - Frontend Integration", () => {
     });
 
     it("should render wiki pages with navigation", async () => {
-      const componentExists = await import("../src/components/WikiPage").then(
+      const componentExists = await import("../src/components/wiki-sidebar").then(
         () => true,
         () => false
       );
 
-      expect(componentExists).toBe(false);
+      expect(componentExists).toBe(true);
 
       // When implemented, should render wiki
       // const { render } = require("@testing-library/react");
@@ -1102,13 +1106,13 @@ describe("PROJECT.md Requirements - Frontend Integration", () => {
 
     it("should render citation links with GitHub integration", async () => {
       const componentExists = await import(
-        "../src/components/CitationLink"
+        "../src/components/citation-link"
       ).then(
         () => true,
         () => false
       );
 
-      expect(componentExists).toBe(false);
+      expect(componentExists).toBe(true);
 
       // When implemented, should render citations
       // const { render } = require("@testing-library/react");
@@ -1124,13 +1128,13 @@ describe("PROJECT.md Requirements - Frontend Integration", () => {
 
     it("should render subsystem cards with proper information", async () => {
       const componentExists = await import(
-        "../src/components/SubsystemCard"
+        "../src/components/subsystem-card"
       ).then(
         () => true,
         () => false
       );
 
-      expect(componentExists).toBe(false);
+      expect(componentExists).toBe(true);
 
       // When implemented, should render subsystem info
       // const { render } = require("@testing-library/react");
@@ -1151,7 +1155,7 @@ describe("PROJECT.md Requirements - Frontend Integration", () => {
       const hookModule = await import("../src/hooks/use-search-wiki").catch(
         () => ({
           useSearchWiki: () => {
-            throw new Error("useSearchWiki hook not implemented yet");
+            throw new Error("useSearchWiki hook not implemented yet - bonus feature");
           },
         })
       );
@@ -1159,12 +1163,12 @@ describe("PROJECT.md Requirements - Frontend Integration", () => {
       const useSearchWiki =
         (hookModule as any).useSearchWiki ||
         (() => {
-          throw new Error("useSearchWiki hook not implemented yet");
+          throw new Error("useSearchWiki hook not implemented yet - bonus feature");
         });
 
       expect(() => {
         useSearchWiki("test-wiki", "search term");
-      }).toThrow("useSearchWiki hook not implemented yet");
+      }).toThrow("useSearchWiki hook not implemented yet - bonus feature");
 
       // When implemented, should provide search
       // const { data, isLoading } = useSearchWiki("test-wiki", "CLI");

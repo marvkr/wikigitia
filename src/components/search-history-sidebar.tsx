@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import {
   GitBranch,
@@ -15,15 +16,33 @@ import { Separator } from "@/components/ui/separator";
 import { useRecentRepositories } from "@/hooks/use-recent-repositories";
 
 interface SearchHistorySidebarProps {
-  onViewWiki: (repositoryId: string) => void;
-  onReanalyze: (url: string) => void;
+  onViewWiki?: (repositoryId: string) => void;
+  onReanalyze?: (url: string) => void;
 }
 
 export function SearchHistorySidebar({
   onViewWiki,
   onReanalyze,
-}: SearchHistorySidebarProps) {
+}: SearchHistorySidebarProps = {}) {
+  const router = useRouter();
   const { data: repositories = [], isLoading, error } = useRecentRepositories();
+
+  const handleViewWiki = (repositoryId: string) => {
+    if (onViewWiki) {
+      onViewWiki(repositoryId);
+    } else {
+      router.push(`/wiki/${repositoryId}`);
+    }
+  };
+
+  const handleReanalyze = (url: string) => {
+    if (onReanalyze) {
+      onReanalyze(url);
+    } else {
+      // Navigate to home with the URL
+      router.push(`/?reanalyze=${encodeURIComponent(url)}`);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -54,45 +73,51 @@ export function SearchHistorySidebar({
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 max-w-full overflow-hidden">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-sm">Recent Repositories</h3>
+        <h3 className="font-semibold text-sm truncate">Recent Repositories</h3>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3 overflow-hidden">
         {repositories.map((repo, index) => (
           <div key={repo.id} className="group">
             <div className="space-y-2">
-              <div className="flex items-start gap-2">
+              <div className="flex items-start gap-2 min-w-0">
                 <GitBranch className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 overflow-hidden">
                   <p
                     className="text-sm font-medium truncate"
                     title={`${repo.owner}/${repo.name}`}>
                     {repo.owner}/{repo.name}
                   </p>
                   {repo.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                    <p
+                      className="text-xs text-muted-foreground mt-1 break-words"
+                      style={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}>
                       {repo.description}
                     </p>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                <span>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground min-w-0">
+                <Clock className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate flex-1">
                   {formatDistanceToNow(new Date(repo.analyzedAt), {
                     addSuffix: true,
                   })}
                 </span>
                 {repo.language && (
-                  <>
-                    <Separator orientation="vertical" className="h-3" />
-                    <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                      {repo.language}
-                    </Badge>
-                  </>
+                  <Badge
+                    variant="secondary"
+                    className="text-xs px-1 py-0 flex-shrink-0">
+                    {repo.language}
+                  </Badge>
                 )}
               </div>
 
@@ -100,16 +125,16 @@ export function SearchHistorySidebar({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => onViewWiki(repo.id)}
-                  className="h-7 px-2 text-xs flex-1">
+                  onClick={() => handleViewWiki(repo.id)}
+                  className="h-7 px-2 text-xs justify-start">
                   <ExternalLink className="h-3 w-3 mr-1" />
                   View Wiki
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => onReanalyze(repo.url)}
-                  className="h-7 px-2 text-xs flex-1">
+                  onClick={() => handleReanalyze(repo.url)}
+                  className="h-7 px-2 text-xs justify-start">
                   <RotateCcw className="h-3 w-3 mr-1" />
                   Re-analyze
                 </Button>

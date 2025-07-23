@@ -9,11 +9,10 @@ import { desc, isNotNull } from "drizzle-orm";
 const app = new Hono().basePath("/api");
 
 // Mount existing routes
-app.route("/analyze", analyze);
-app.route("/wiki", wiki);
+const routes = app.route("/analyze", analyze).route("/wiki", wiki);
 
 // Recent repositories endpoint for search history
-app.get("/repositories/recent", async (c) => {
+const finalApp = routes.get("/repositories/recent", async (c) => {
   try {
     const recentRepositories = await db
       .select({
@@ -38,5 +37,8 @@ app.get("/repositories/recent", async (c) => {
   }
 });
 
-export const GET = handle(app);
-export const POST = handle(app);
+export const GET = handle(finalApp);
+export const POST = handle(finalApp);
+
+// Export type for RPC client
+export type AppType = typeof finalApp;

@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useEffect } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,8 +21,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Loader2, Github, Zap } from "lucide-react";
-import { useAnalyzeRepository } from "@/hooks/use-analyze-repository";
+import { Loader2, Zap } from "lucide-react";
+import { useCreateAnalysis } from "@/hooks/use-create-analysis";
 
 const formSchema = z.object({
   url: z
@@ -50,7 +51,7 @@ export function RepositoryInputForm({
   onAnalysisStarted,
   initialUrl,
 }: RepositoryInputFormProps) {
-  const { mutate: analyzeRepository, isPending } = useAnalyzeRepository();
+  const { mutate: createAnalysis, isPending } = useCreateAnalysis();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -59,8 +60,15 @@ export function RepositoryInputForm({
     },
   });
 
+  // Update form when initialUrl changes (for re-analyze functionality)
+  useEffect(() => {
+    if (initialUrl) {
+      form.reset({ url: initialUrl });
+    }
+  }, [initialUrl, form]);
+
   function onSubmit(values: FormData) {
-    analyzeRepository(values, {
+    createAnalysis(values, {
       onSuccess: (data) => {
         if (data.jobId) {
           onAnalysisStarted?.(data.jobId);
