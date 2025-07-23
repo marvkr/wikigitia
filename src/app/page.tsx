@@ -79,16 +79,16 @@ function HomeContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="w-full px-6 py-12">
-        <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-1 w-full px-4 md:px-6 py-6 md:py-8">
+        <div className="max-w-4xl mx-auto h-full flex flex-col">
           {/* Header */}
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold tracking-tight text-foreground flex items-center justify-center gap-3">
-              <Github className="h-10 w-10" />
+          <div className="text-center space-y-3 mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground flex items-center justify-center gap-3">
+              <Github className="h-8 w-8 md:h-10 md:w-10" />
               Wikigitia
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
               Transform any GitHub repository into comprehensive, AI-generated
               documentation. Perfect for developers who want to understand
               codebases quickly.
@@ -96,104 +96,107 @@ function HomeContent() {
           </div>
 
           {/* Main Content */}
-          <div className="space-y-8">
-            {!currentJobId ? (
-              <RepositoryInputForm
-                onAnalysisStarted={handleAnalysisStarted}
-                initialUrl={reAnalyzeUrl || undefined}
-              />
-            ) : (
-              <div className="space-y-6">
-                <AnalysisProgress
-                  jobId={currentJobId}
-                  onComplete={handleAnalysisComplete}
+          <div className="flex-1 flex flex-col justify-center">
+            <div className="space-y-6">
+              {!currentJobId ? (
+                <RepositoryInputForm
+                  onAnalysisStarted={handleAnalysisStarted}
+                  initialUrl={reAnalyzeUrl || undefined}
                 />
+              ) : (
+                <div className="space-y-6">
+                  <AnalysisProgress
+                    jobId={currentJobId}
+                    onComplete={handleAnalysisComplete}
+                  />
 
-                <div className="text-center">
-                  <button
-                    onClick={handleNewAnalysis}
-                    className="text-sm text-muted-foreground hover:text-foreground underline">
-                    ← Start a new analysis
-                  </button>
+                  <div className="text-center">
+                    <button
+                      onClick={handleNewAnalysis}
+                      className="text-sm text-muted-foreground hover:text-foreground underline">
+                      ← Start a new analysis
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Features */}
-          <div className="grid md:grid-cols-3 gap-6 mt-16">
-            <div className="text-center p-6 bg-card rounded-lg shadow-sm border">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <svg
-                  className="w-6 h-6 text-primary"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-card-foreground mb-2">
-                Intelligent Analysis
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                AI-powered analysis identifies key subsystems, features, and
-                architecture patterns
-              </p>
-            </div>
-
-            <div className="text-center p-6 bg-card rounded-lg shadow-sm border">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <svg
-                  className="w-6 h-6 text-primary"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                  />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-card-foreground mb-2">
-                Rich Citations
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Every claim is backed by direct links to specific lines of code
-                in the repository
-              </p>
-            </div>
-
-            <div className="text-center p-6 bg-card rounded-lg shadow-sm border">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <svg
-                  className="w-6 h-6 text-primary"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                  />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-card-foreground mb-2">
-                Wiki-Style Docs
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Navigate through organized, readable documentation with table of
-                contents
-              </p>
+              )}
             </div>
           </div>
+
+          {/* Features - Compact version */}
+          {!currentJobId && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 pt-6 border-t border-border/50">
+              <div className="text-center p-4 bg-card rounded-lg shadow-sm border">
+                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <svg
+                    className="w-5 h-5 text-primary"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-card-foreground mb-2 text-sm">
+                  Intelligent Analysis
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  AI-powered analysis identifies key subsystems and architecture
+                  patterns
+                </p>
+              </div>
+
+              <div className="text-center p-4 bg-card rounded-lg shadow-sm border">
+                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <svg
+                    className="w-5 h-5 text-primary"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                    />
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-card-foreground mb-2 text-sm">
+                  Rich Citations
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Every claim is backed by direct links to specific lines of
+                  code
+                </p>
+              </div>
+
+              <div className="text-center p-4 bg-card rounded-lg shadow-sm border">
+                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <svg
+                    className="w-5 h-5 text-primary"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                    />
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-card-foreground mb-2 text-sm">
+                  Wiki-Style Docs
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Navigate through organized, readable documentation
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

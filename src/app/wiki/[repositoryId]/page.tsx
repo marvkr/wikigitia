@@ -109,53 +109,54 @@ export default function WikiPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="p-6 w-full">
+      <div className="p-4 md:p-6 w-full">
         {/* Back Button */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => router.push("/")}
-          className="mb-4">
+          className="mb-4 md:mb-6">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Home
         </Button>
 
         {/* Repository Header */}
-        <div className="mb-8">
-          <div className="flex items-start justify-between">
-            <div className="space-y-3">
+        <div className="mb-6 md:mb-8">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div className="space-y-3 flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <Github className="h-6 w-6" />
-                <h1 className="text-2xl font-bold">
+                <Github className="h-5 w-5 md:h-6 md:w-6 flex-shrink-0" />
+                <h1 className="text-xl md:text-2xl font-bold truncate">
                   {wiki.repository.owner}/{wiki.repository.name}
                 </h1>
               </div>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground text-sm md:text-base line-clamp-2">
                 {wiki.repository.description}
               </p>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-3 md:gap-4 text-sm text-muted-foreground">
                 {wiki.repository.language && (
                   <div className="flex items-center gap-1">
-                    <Code className="h-4 w-4" />
+                    <Code className="h-3 w-3 md:h-4 md:w-4" />
                     <span>{wiki.repository.language}</span>
                   </div>
                 )}
                 {wiki.repository.stars && (
                   <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4" />
+                    <Star className="h-3 w-3 md:h-4 md:w-4" />
                     <span>{wiki.repository.stars} stars</span>
                   </div>
                 )}
               </div>
             </div>
-            <Button asChild>
+            <Button asChild size="sm" className="self-start">
               <a
                 href={wiki.repository.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2">
                 <Github className="h-4 w-4" />
-                View Repository
+                <span className="hidden sm:inline">View Repository</span>
+                <span className="sm:hidden">View</span>
               </a>
             </Button>
           </div>
@@ -202,8 +203,10 @@ export default function WikiPage() {
           <div className="space-y-6">
             {/* Subsystems Grid */}
             <div>
-              <h2 className="text-xl font-semibold mb-4">Subsystems</h2>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <h2 className="text-lg md:text-xl font-semibold mb-4">
+                Subsystems
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 {wiki.subsystems.map((subsystem) => {
                   const page = wiki.pages.find(
                     (p) => p.subsystem.id === subsystem.id

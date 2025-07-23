@@ -7,7 +7,7 @@ import { CodeBlock } from "@/components/code-block";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton"; 
+import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   ArrowLeft,
@@ -20,7 +20,7 @@ import {
   Terminal,
   Code,
   Database,
-  Layers
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -88,7 +88,7 @@ export default function SubsystemPage() {
   const {
     data: wikiPage,
     isLoading,
-    error
+    error,
   } = useGetWikiPage(repositoryId, subsystemId);
 
   if (isLoading) {
@@ -135,9 +135,7 @@ export default function SubsystemPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Alert className="max-w-md">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Subsystem page not found.
-          </AlertDescription>
+          <AlertDescription>Subsystem page not found.</AlertDescription>
         </Alert>
       </div>
     );
@@ -145,7 +143,7 @@ export default function SubsystemPage() {
 
   const renderContent = (content: string) => {
     // Process the markdown content line by line for better formatting
-    const lines = content.split('\n');
+    const lines = content.split("\n");
     const elements: React.ReactNode[] = [];
     let i = 0;
 
@@ -153,20 +151,20 @@ export default function SubsystemPage() {
       const line = lines[i];
 
       // Handle code blocks
-      if (line.trim().startsWith('```')) {
-        const language = line.replace('```', '').trim();
+      if (line.trim().startsWith("```")) {
+        const language = line.replace("```", "").trim();
         const codeLines: string[] = [];
         i++; // Skip the opening ```
-        
-        while (i < lines.length && !lines[i].trim().startsWith('```')) {
+
+        while (i < lines.length && !lines[i].trim().startsWith("```")) {
           codeLines.push(lines[i]);
           i++;
         }
-        
+
         elements.push(
           <CodeBlock
             key={elements.length}
-            code={codeLines.join('\n')}
+            code={codeLines.join("\n")}
             language={language}
             className="my-6"
           />
@@ -176,11 +174,11 @@ export default function SubsystemPage() {
       }
 
       // Handle headers
-      if (line.startsWith('#')) {
+      if (line.startsWith("#")) {
         const level = line.match(/^#+/)?.[0].length || 1;
-        const text = line.replace(/^#+\s*/, '');
+        const text = line.replace(/^#+\s*/, "");
         const headerLevel = Math.min(level, 6);
-        
+
         const headerClasses = cn(
           "font-bold text-foreground mt-8 mb-4 first:mt-0",
           level === 1 && "text-2xl",
@@ -189,30 +187,54 @@ export default function SubsystemPage() {
           level === 4 && "text-base",
           level >= 5 && "text-sm"
         );
-        
+
         // Create header element based on level
         let headerElement: React.ReactNode;
         switch (headerLevel) {
           case 1:
-            headerElement = <h1 key={elements.length} className={headerClasses}>{text}</h1>;
+            headerElement = (
+              <h1 key={elements.length} className={headerClasses}>
+                {text}
+              </h1>
+            );
             break;
           case 2:
-            headerElement = <h2 key={elements.length} className={headerClasses}>{text}</h2>;
+            headerElement = (
+              <h2 key={elements.length} className={headerClasses}>
+                {text}
+              </h2>
+            );
             break;
           case 3:
-            headerElement = <h3 key={elements.length} className={headerClasses}>{text}</h3>;
+            headerElement = (
+              <h3 key={elements.length} className={headerClasses}>
+                {text}
+              </h3>
+            );
             break;
           case 4:
-            headerElement = <h4 key={elements.length} className={headerClasses}>{text}</h4>;
+            headerElement = (
+              <h4 key={elements.length} className={headerClasses}>
+                {text}
+              </h4>
+            );
             break;
           case 5:
-            headerElement = <h5 key={elements.length} className={headerClasses}>{text}</h5>;
+            headerElement = (
+              <h5 key={elements.length} className={headerClasses}>
+                {text}
+              </h5>
+            );
             break;
           default:
-            headerElement = <h6 key={elements.length} className={headerClasses}>{text}</h6>;
+            headerElement = (
+              <h6 key={elements.length} className={headerClasses}>
+                {text}
+              </h6>
+            );
             break;
         }
-        
+
         elements.push(headerElement);
         i++;
         continue;
@@ -223,23 +245,27 @@ export default function SubsystemPage() {
         const processInlineContent = (text: string) => {
           // Split by code, links, and citations
           const parts = text.split(/(\[.*?\]\(.*?\)|\`[^\`]+\`)/);
-          
+
           return parts.map((part, index) => {
             // Handle inline code
-            if (part.startsWith('`') && part.endsWith('`')) {
+            if (part.startsWith("`") && part.endsWith("`")) {
               return (
-                <code key={index} className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">
+                <code
+                  key={index}
+                  className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">
                   {part.slice(1, -1)}
                 </code>
               );
             }
 
             // Handle markdown links (potential citations)
-            if (part.startsWith('[') && part.includes('](')) {
+            if (part.startsWith("[") && part.includes("](")) {
               const match = part.match(/\[(.*?)\]\((.*?)\)/);
               if (match) {
                 const [, text, url] = match;
-                const citation = wikiPage.citations.find(c => c.text === text || c.url === url);
+                const citation = wikiPage.citations.find(
+                  (c) => c.text === text || c.url === url
+                );
                 if (citation) {
                   return <CitationLink key={index} citation={citation} />;
                 } else {
@@ -249,8 +275,7 @@ export default function SubsystemPage() {
                       href={url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
+                      className="text-primary hover:underline">
                       {text}
                     </a>
                   );
@@ -264,7 +289,9 @@ export default function SubsystemPage() {
         };
 
         elements.push(
-          <p key={elements.length} className="mb-4 leading-relaxed text-foreground">
+          <p
+            key={elements.length}
+            className="mb-4 leading-relaxed text-foreground">
             {processInlineContent(line)}
           </p>
         );
@@ -283,39 +310,47 @@ export default function SubsystemPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b bg-muted/30">
-        <div className="w-full px-6 py-4">
+        <div className="w-full px-4 md:px-6 py-4">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => router.push(`/wiki/${repositoryId}`)}
-            className="mb-4"
-          >
+            className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Wiki
           </Button>
 
-          <div className="flex items-start gap-4">
-            <div className={cn(
-              "p-2 rounded-lg border flex-shrink-0",
-              getTypeColor(wikiPage.subsystem.type)
-            )}>
+          <div className="flex items-start gap-3 md:gap-4">
+            <div
+              className={cn(
+                "p-2 rounded-lg border flex-shrink-0",
+                getTypeColor(wikiPage.subsystem.type)
+              )}>
               {getTypeIcon(wikiPage.subsystem.type)}
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold mb-2">{wikiPage.title}</h1>
-              <p className="text-muted-foreground mb-3">{wikiPage.subsystem.description}</p>
-              <div className="flex items-center gap-2">
-                <Badge 
-                  variant="outline" 
-                  className={cn("text-xs", getTypeColor(wikiPage.subsystem.type))}
-                >
+              <h1 className="text-xl md:text-2xl font-bold mb-2 break-words">
+                {wikiPage.title}
+              </h1>
+              <p className="text-muted-foreground mb-3 text-sm md:text-base line-clamp-3">
+                {wikiPage.subsystem.description}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-xs",
+                    getTypeColor(wikiPage.subsystem.type)
+                  )}>
                   {wikiPage.subsystem.type}
                 </Badge>
                 {wikiPage.subsystem.complexity && (
-                  <Badge 
-                    variant="outline" 
-                    className={cn("text-xs", getComplexityColor(wikiPage.subsystem.complexity))}
-                  >
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-xs",
+                      getComplexityColor(wikiPage.subsystem.complexity)
+                    )}>
                     {wikiPage.subsystem.complexity} complexity
                   </Badge>
                 )}
@@ -326,8 +361,8 @@ export default function SubsystemPage() {
       </div>
 
       {/* Content */}
-      <div className="w-full px-6 py-8">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <div className="w-full px-4 md:px-6 py-6 md:py-8">
+        <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
           {/* Wiki Content */}
           <Card>
             <CardContent className="prose prose-neutral dark:prose-invert max-w-none p-6">
@@ -341,12 +376,12 @@ export default function SubsystemPage() {
           {wikiPage.citations.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <ExternalLink className="h-5 w-5" />
+                <CardTitle className="text-base md:text-lg flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4 md:h-5 md:w-5" />
                   Citations ({wikiPage.citations.length})
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-2 md:space-y-3">
                 {wikiPage.citations.map((citation, index) => (
                   <CitationLink
                     key={index}

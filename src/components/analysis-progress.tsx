@@ -36,6 +36,9 @@ export function AnalysisProgress({ jobId, onComplete }: AnalysisProgressProps) {
   );
 
   const [progressValue, setProgressValue] = useState(0);
+  const [currentPhase, setCurrentPhase] = useState<
+    "analysis" | "wiki-generation" | "completed"
+  >("analysis");
 
   useEffect(() => {
     if (!analysisStatus) return;
@@ -45,11 +48,13 @@ export function AnalysisProgress({ jobId, onComplete }: AnalysisProgressProps) {
     // Simulate progress based on status
     if (status === "pending") {
       setProgressValue(5);
+      setCurrentPhase("analysis");
     } else if (status === "in_progress") {
-      // Gradually increase progress while in progress
+      setCurrentPhase("analysis");
+      // Gradually increase progress while in progress (up to 70% for analysis)
       const interval = setInterval(() => {
         setProgressValue((prev) => {
-          if (prev < 85) {
+          if (prev < 70) {
             return prev + Math.random() * 3; // Gradually increase
           }
           return prev;
@@ -58,16 +63,32 @@ export function AnalysisProgress({ jobId, onComplete }: AnalysisProgressProps) {
 
       return () => clearInterval(interval);
     } else if (status === "completed") {
-      setProgressValue(100);
+      setProgressValue(75); // Analysis complete, now generating wiki
+      setCurrentPhase("wiki-generation");
 
       if (analysisStatus.repositoryId) {
         // Check if wiki is ready
         if (wikiData?.hasWiki) {
+          setProgressValue(100);
+          setCurrentPhase("completed");
           onComplete?.(analysisStatus.repositoryId);
+        } else {
+          // Wiki generation in progress - simulate progress from 75% to 95%
+          const wikiInterval = setInterval(() => {
+            setProgressValue((prev) => {
+              if (prev < 95) {
+                return prev + Math.random() * 2;
+              }
+              return prev;
+            });
+          }, 1500);
+
+          return () => clearInterval(wikiInterval);
         }
       }
     } else if (status === "failed") {
       setProgressValue(0);
+      setCurrentPhase("analysis");
     }
   }, [analysisStatus, wikiData, onComplete]);
 
@@ -75,6 +96,15 @@ export function AnalysisProgress({ jobId, onComplete }: AnalysisProgressProps) {
     if (isLoading) return <Loader2 className="h-4 w-4 animate-spin" />;
 
     const status = analysisStatus?.status;
+
+    if (status === "completed") {
+      if (currentPhase === "wiki-generation") {
+        return <Loader2 className="h-4 w-4 animate-spin text-foreground" />;
+      } else if (currentPhase === "completed") {
+        return <CheckCircle className="h-4 w-4 text-primary" />;
+      }
+    }
+
     switch (status) {
       case "pending":
         return <Clock className="h-4 w-4 text-foreground" />;
@@ -93,11 +123,20 @@ export function AnalysisProgress({ jobId, onComplete }: AnalysisProgressProps) {
     if (isLoading) return "Initializing analysis...";
 
     const status = analysisStatus?.status;
+
+    if (status === "completed") {
+      if (currentPhase === "wiki-generation") {
+        return "Analysis completed! Now generating wiki pages...";
+      } else if (currentPhase === "completed") {
+        return "Documentation generated successfully!";
+      }
+    }
+
     switch (status) {
       case "pending":
         return "Analysis queued - starting soon...";
       case "in_progress":
-        return "Analyzing repository structure and generating documentation...";
+        return "Analyzing repository structure and identifying subsystems...";
       case "completed":
         return "Analysis completed successfully!";
       case "failed":
@@ -109,14 +148,27 @@ export function AnalysisProgress({ jobId, onComplete }: AnalysisProgressProps) {
 
   const getProgressText = () => {
     const status = analysisStatus?.status;
+
     if (status === "pending") return "Queued";
+
     if (status === "in_progress") {
       if (progressValue < 20) return "Scanning repository structure...";
-      if (progressValue < 50) return "Analyzing code patterns...";
-      if (progressValue < 80) return "Generating documentation...";
-      return "Finalizing wiki pages...";
+      if (progressValue < 40) return "Analyzing code patterns...";
+      if (progressValue < 70) return "Identifying subsystems...";
+      return "Preparing for documentation...";
     }
-    if (status === "completed") return "Complete";
+
+    if (status === "completed") {
+      if (currentPhase === "wiki-generation") {
+        if (progressValue < 85) return "Generating wiki pages...";
+        if (progressValue < 95) return "Creating documentation...";
+        return "Finalizing wiki...";
+      } else if (currentPhase === "completed") {
+        return "Complete";
+      }
+      return "Analysis Complete";
+    }
+
     if (status === "failed") return "Failed";
     return "Initializing...";
   };
@@ -142,11 +194,18 @@ export function AnalysisProgress({ jobId, onComplete }: AnalysisProgressProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           {getStatusIcon()}
-          Repository Analysis
+          {currentPhase === "wiki-generation"
+            ? "Generating Documentation"
+            : currentPhase === "completed"
+            ? "Documentation Complete"
+            : "Repository Analysis"}
         </CardTitle>
         <CardDescription>
-          Analyzing repository structure and generating comprehensive
-          documentation
+          {currentPhase === "wiki-generation"
+            ? "Creating comprehensive wiki pages for each subsystem"
+            : currentPhase === "completed"
+            ? "Your repository documentation is ready to explore"
+            : "Analyzing repository structure and identifying key subsystems"}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
