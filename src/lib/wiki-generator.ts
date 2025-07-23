@@ -1,4 +1,6 @@
-import OpenAI from "openai";
+import { openai } from "@ai-sdk/openai";
+import { generateObject } from "ai";
+import { z } from "zod";
 import { GitHubService } from "./github";
 import { Citation, TableOfContentsItem } from "@/db/schema";
 
@@ -12,19 +14,38 @@ interface WikiContent {
 interface Subsystem {
   id: string;
   name: string;
-  description: string | null;
+  description: string;
   type: string;
   files: string[];
   entryPoints: string[];
   dependencies: string[];
-  complexity: string | null;
+  complexity: string;
 }
 
-export class WikiGenerator {
-  private static openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY!,
-  });
+// Zod schemas for AI response validation
+const CitationSchema = z.object({
+  text: z.string(),
+  file: z.string(),
+  startLine: z.number(),
+  endLine: z.number(),
+  url: z.string().optional(),
+  context: z.string(),
+});
 
+const TableOfContentsSchema = z.object({
+  title: z.string(),
+  anchor: z.string(),
+  level: z.number(),
+});
+
+const WikiContentSchema = z.object({
+  title: z.string(),
+  content: z.string(),
+  citations: z.array(CitationSchema),
+  tableOfContents: z.array(TableOfContentsSchema),
+});
+
+export class WikiGenerator {
   static async generateWikiPage(
     subsystem: Subsystem,
     owner: string,
@@ -63,23 +84,13 @@ export class WikiGenerator {
     owner: string,
     repo: string
   ): Promise<{ path: string; content: string; lines: number }[]> {
-    const relevantCode: { path: string; content: string; lines: number }[] = [];
+    const relevantFiles: { path: string; content: string; lines: number }[] =
+      [];
 
-    const filesToCheck = [
-      ...subsystem.entryPoints,
-      ...subsystem.files.slice(0, 5), // Limit to first 5 files to avoid token limits
-    ]
-      .filter((file, index, arr) => arr.indexOf(file) === index) // Remove duplicates
-      .filter((file) => {
-        // Filter out invalid file paths
-        if (!file || typeof file !== "string") return false;
-        if (file.includes("*")) return false; // Skip wildcard patterns
-        if (file.includes("..")) return false; // Skip relative paths with ..
-        if (file.length > 500) return false; // Skip extremely long paths
-        return true;
-      });
+    // Process subsystem files (limit to 10 most important)
+    const filesToProcess = subsystem.files.slice(0, 10);
 
-    for (const filePath of filesToCheck) {
+    for (const filePath of filesToProcess) {
       try {
         const content = await GitHubService.getFileContent(
           owner,
@@ -88,26 +99,24 @@ export class WikiGenerator {
         );
         const lines = content.split("\n").length;
 
-        if (content.length < 10000) {
-          // Limit file size
-          relevantCode.push({
-            path: filePath,
-            content: content.slice(0, 5000), // Truncate very long files
-            lines,
-          });
+        // Skip very large files or binary files
+        if (lines > 1000 || content.length > 50000) {
+          console.log(`Skipping large file: ${filePath} (${lines} lines)`);
+          continue;
         }
-      } catch (error) {
-        // Log warning but continue processing other files
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        console.warn(`Could not fetch content for ${filePath}:`, errorMessage);
-        // Don't throw - just skip this file and continue
-      }
 
-      if (relevantCode.length >= 8) break; // Limit number of files
+        relevantFiles.push({
+          path: filePath,
+          content: content.slice(0, 5000), // Limit content to avoid token limits
+          lines,
+        });
+      } catch (error) {
+        console.warn(`Could not fetch content for ${filePath}:`, error);
+        // Continue with other files even if one fails
+      }
     }
 
-    return relevantCode;
+    return relevantFiles;
   }
 
   private static async generateContent(
@@ -118,12 +127,10 @@ export class WikiGenerator {
   ): Promise<WikiContent> {
     const prompt = this.buildWikiPrompt(subsystem, relevantCode, owner, repo);
 
-    const completion = await this.openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: `You are a technical documentation expert creating comprehensive wiki pages for software subsystems.
+    const { object } = await generateObject({
+      model: openai("gpt-4-turbo-2024-04-09"), // GPT-4.1
+      schema: WikiContentSchema,
+      system: `You are a technical documentation expert creating comprehensive wiki pages for software subsystems.
 
 Your task is to create clear, well-structured documentation that helps developers understand:
 1. What this subsystem does and why it exists
@@ -131,71 +138,30 @@ Your task is to create clear, well-structured documentation that helps developer
 3. Key interfaces and entry points
 4. Important implementation details with code citations
 
-Return a JSON response with this exact structure:
-{
-  "title": "Clear, descriptive title for the wiki page",
-  "content": "Full markdown content with proper formatting, code blocks, and citation markers like [^1]",
-  "citations": [
-    {
-      "text": "The specific code or concept being cited",
-      "file": "path/to/file.ext",
-      "startLine": 1,
-      "endLine": 5,
-      "url": "Generated GitHub URL",
-      "context": "Brief explanation of what this code does"
-    }
-  ],
-  "tableOfContents": [
-    {
-      "title": "Section Title",
-      "anchor": "section-anchor",
-      "level": 1
-    }
-  ]
-}
+Create comprehensive documentation with:
+- A clear, descriptive title
+- Well-structured markdown content with proper formatting
+- Code examples with syntax highlighting
+- Citations for specific code references using [^1], [^2], etc.
+- Accurate line number estimates for citations
+- A logical table of contents with proper anchors
+- Focus on practical information developers need
 
-Important guidelines:
+Guidelines:
 - Use markdown formatting for readability
-- Include code examples with syntax highlighting
-- Create citations for specific code references using [^1], [^2], etc.
-- Generate accurate GitHub URLs with line numbers
+- Include code examples where relevant
+- Create citations for important code references
+- Generate realistic line numbers based on content position
 - Organize content with clear headings and sections
-- Focus on practical information developers need`,
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
+- Make it useful for developers new to the codebase`,
+      prompt,
       temperature: 0.3,
-      max_tokens: 4000,
     });
 
-    const response = completion.choices[0]?.message?.content;
-    if (!response) {
-      throw new Error("No response from OpenAI");
-    }
-
-    // Clean the response to ensure it's valid JSON
-    let cleanedResponse = response.trim();
-    
-    // Remove markdown code blocks if present
-    if (cleanedResponse.startsWith('```json')) {
-      cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    } else if (cleanedResponse.startsWith('```')) {
-      cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
-    }
-
-    let parsed: WikiContent;
-    try {
-      parsed = JSON.parse(cleanedResponse) as WikiContent;
-    } catch (error) {
-      console.error("Failed to parse OpenAI response as JSON:", cleanedResponse);
-      throw new Error(`Failed to parse OpenAI response as JSON: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    const wikiContent = object as WikiContent;
 
     // Generate GitHub URLs for citations
-    parsed.citations = parsed.citations.map((citation) => ({
+    wikiContent.citations = wikiContent.citations.map((citation) => ({
       ...citation,
       url: GitHubService.generateGitHubUrl(
         owner,
@@ -206,7 +172,7 @@ Important guidelines:
       ),
     }));
 
-    return parsed;
+    return wikiContent;
   }
 
   private static buildWikiPrompt(
@@ -257,20 +223,10 @@ Organize the content with clear sections and use markdown formatting. Make it us
 }
 
 /**
- * Exported function that tests expect
- * Generates a wiki page for a subsystem
+ * Main exported function for generating wiki pages
  */
 export async function generateWikiPage(
-  subsystem: {
-    id: string;
-    name: string;
-    description: string;
-    type: string;
-    files: string[];
-    entryPoints: string[];
-    dependencies: string[];
-    complexity: string;
-  },
+  subsystem: Subsystem,
   owner: string,
   repo: string
 ): Promise<WikiContent> {

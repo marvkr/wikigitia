@@ -1,4 +1,6 @@
-import OpenAI from "openai";
+import { openai } from "@ai-sdk/openai";
+import { generateObject } from "ai";
+import { z } from "zod";
 import { GitHubService } from "./github";
 import { nanoid } from "nanoid";
 
@@ -25,8 +27,13 @@ interface InternalRepositoryAnalysis {
   subsystems: SubsystemAnalysis[];
 }
 
-// Type matching what tests expect
-export interface RepositoryAnalysis {
+interface FileStructure {
+  path: string;
+  type: "file" | "dir";
+  size?: number;
+}
+
+interface RepositoryAnalysis {
   repository: {
     owner: string;
     name: string;
@@ -40,19 +47,11 @@ export interface RepositoryAnalysis {
     id: string;
     name: string;
     description: string;
-    type:
-      | "feature"
-      | "service"
-      | "utility"
-      | "cli"
-      | "api"
-      | "data"
-      | "auth"
-      | "core";
+    type: string;
     files: string[];
     entryPoints: string[];
     dependencies: string[];
-    publicInterfaces?: string[];
+    publicInterfaces: string[];
     technicalPerspective: string;
     featurePerspective: string;
   }>;
@@ -60,22 +59,36 @@ export interface RepositoryAnalysis {
     analyzedAt: string;
     totalFiles: number;
     analysisVersion: string;
-    complexity: "low" | "medium" | "high";
+    complexity: string;
   };
 }
 
-interface FileStructure {
-  path: string;
-  type: "file" | "dir";
-  content?: string;
-  size?: number;
-}
+// Zod schema for AI response validation
+const SubsystemSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  type: z.enum([
+    "feature",
+    "service",
+    "utility",
+    "infrastructure",
+    "cli",
+    "api",
+    "frontend",
+    "backend",
+  ]),
+  files: z.array(z.string()),
+  entryPoints: z.array(z.string()),
+  dependencies: z.array(z.string()),
+  complexity: z.enum(["low", "medium", "high"]),
+});
+
+const AnalysisSchema = z.object({
+  summary: z.string(),
+  subsystems: z.array(SubsystemSchema),
+});
 
 export class AIAnalyzer {
-  private static openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY!,
-  });
-
   static async analyzeRepository(
     owner: string,
     repo: string,
@@ -92,44 +105,30 @@ export class AIAnalyzer {
         keyFiles
       );
 
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: `You are an expert software architect analyzing GitHub repositories. Your task is to identify high-level subsystems that balance both feature-driven and technical perspectives. Focus on key features, user services, authentication flows, data layers, CLI tools, and core architectural components.
+      const { object } = await generateObject({
+        model: openai("gpt-4-turbo-2024-04-09"), // GPT-4.1
+        schema: AnalysisSchema,
+        system: `You are an expert software architect analyzing GitHub repositories. Your task is to identify high-level subsystems that balance both feature-driven and technical perspectives. Focus on key features, user services, authentication flows, data layers, CLI tools, and core architectural components.
 
-            Return a JSON response with this exact structure:
-            {
-              "summary": "Brief overview of the repository's purpose and architecture",
-              "subsystems": [
-                {
-                  "name": "Subsystem Name",
-                  "description": "Clear description of what this subsystem does",
-                  "type": "feature|service|utility|infrastructure|cli|api|frontend|backend",
-                  "files": ["list", "of", "relevant", "file", "paths"],
-                  "entryPoints": ["main", "entry", "files"],
-                  "dependencies": ["external", "dependencies"],
-                  "complexity": "low|medium|high"
-                }
-              ]
-            }`,
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
+Analyze the repository structure and identify 3-8 meaningful subsystems that would help a developer understand the codebase. Each subsystem should represent either:
+1. A major feature or user-facing capability
+2. A technical component or service layer
+3. Infrastructure or tooling that supports the application
+4. A distinct architectural layer (frontend, backend, API, etc.)
+
+For each subsystem, provide:
+- A clear, descriptive name
+- What it does and why it's important
+- The appropriate type classification
+- Key files that belong to it (be selective, include the most important ones)
+- Main entry points (files that serve as interfaces or starting points)
+- External dependencies it relies on
+- Complexity assessment based on code structure and responsibilities`,
+        prompt,
         temperature: 0.3,
-        max_tokens: 3000,
       });
 
-      const response = completion.choices[0]?.message?.content;
-      if (!response) {
-        throw new Error("No response from OpenAI");
-      }
-
-      return JSON.parse(response) as InternalRepositoryAnalysis;
+      return object as InternalRepositoryAnalysis;
     } catch (error) {
       console.error("AI Analysis error:", error);
       throw new Error(`AI analysis failed: ${error}`);
@@ -137,32 +136,13 @@ export class AIAnalyzer {
   }
 
   private static buildFileStructure(files: FileStructure[]): string {
-    const directories = new Map<string, string[]>();
+    const tree = files
+      .filter((f) => f.type === "file")
+      .slice(0, 100) // Limit to first 100 files to avoid token limits
+      .map((f) => `${f.path} (${f.size || 0} bytes)`)
+      .join("\n");
 
-    files.forEach((file) => {
-      const parts = file.path.split("/");
-      const dir = parts.length > 1 ? parts.slice(0, -1).join("/") : "";
-      const filename = parts[parts.length - 1];
-
-      if (!directories.has(dir)) {
-        directories.set(dir, []);
-      }
-      directories.get(dir)!.push(filename);
-    });
-
-    let structure = "Repository File Structure:\n";
-    const sortedDirs = Array.from(directories.keys()).sort();
-
-    for (const dir of sortedDirs) {
-      const dirName = dir || "(root)";
-      structure += `\n${dirName}/\n`;
-      const sortedFiles = directories.get(dir)!.sort();
-      for (const file of sortedFiles) {
-        structure += `  ${file}\n`;
-      }
-    }
-
-    return structure;
+    return `File structure (${files.length} total files):\n${tree}`;
   }
 
   private static async identifyKeyFiles(
@@ -171,55 +151,45 @@ export class AIAnalyzer {
     files: FileStructure[]
   ): Promise<string> {
     const keyFilePatterns = [
-      "README.md",
-      "package.json",
-      "requirements.txt",
-      "Cargo.toml",
-      "main.py",
-      "index.js",
-      "index.ts",
-      "app.py",
-      "server.js",
-      "config",
-      "setup",
-      "Dockerfile",
-      "docker-compose",
+      /package\.json$/,
+      /requirements\.txt$/,
+      /Cargo\.toml$/,
+      /go\.mod$/,
+      /pom\.xml$/,
+      /README\.md$/i,
+      /index\.(js|ts|py|html)$/,
+      /main\.(js|ts|py|go|rs)$/,
+      /app\.(js|ts|py)$/,
+      /server\.(js|ts|py)$/,
+      /config\.(js|ts|json|yaml|yml)$/,
     ];
 
-    const keyFiles: { path: string; content: string }[] = [];
+    const keyFiles = files.filter((file) =>
+      keyFilePatterns.some((pattern) => pattern.test(file.path))
+    );
 
-    for (const file of files.slice(0, 20)) {
-      // Limit to first 20 files to avoid token limits
-      const shouldInclude =
-        keyFilePatterns.some((pattern) =>
-          file.path.toLowerCase().includes(pattern.toLowerCase())
-        ) || file.path.split("/").length <= 2; // Include root level files
+    if (keyFiles.length === 0) {
+      return "No key configuration files found.";
+    }
 
-      if (shouldInclude) {
+    const fileContents = await Promise.all(
+      keyFiles.slice(0, 5).map(async (file) => {
         try {
           const content = await GitHubService.getFileContent(
             owner,
             repo,
             file.path
           );
-          if (content.length < 5000) {
-            // Limit content size
-            keyFiles.push({ path: file.path, content: content.slice(0, 2000) });
-          }
+          return `=== ${file.path} ===\n${content.slice(0, 1000)}${
+            content.length > 1000 ? "\n... (truncated)" : ""
+          }\n`;
         } catch (error) {
-          console.warn(`Could not fetch content for ${file.path}:`, error);
+          return `=== ${file.path} ===\n(Could not fetch content)\n`;
         }
-      }
+      })
+    );
 
-      if (keyFiles.length >= 10) break; // Limit number of files
-    }
-
-    let keyFilesContent = "Key File Contents:\n\n";
-    for (const file of keyFiles) {
-      keyFilesContent += `=== ${file.path} ===\n${file.content}\n\n`;
-    }
-
-    return keyFilesContent;
+    return `Key files content:\n${fileContents.join("\n")}`;
   }
 
   private static buildAnalysisPrompt(
@@ -253,6 +223,44 @@ For each subsystem, provide:
 
 Focus on subsystems that would be meaningful to a developer trying to understand the codebase. Aim for 3-8 subsystems total.`;
   }
+}
+
+// Helper functions for type mapping and complexity calculation
+function mapSubsystemType(type: string): string {
+  const typeMap: Record<string, string> = {
+    feature: "Feature",
+    service: "Service",
+    utility: "Utility",
+    infrastructure: "Infrastructure",
+    cli: "CLI Tool",
+    api: "API",
+    frontend: "Frontend",
+    backend: "Backend",
+  };
+  return typeMap[type] || "Component";
+}
+
+function calculateOverallComplexity(complexities: string[]): string {
+  const complexityScores = complexities.map((c) => {
+    switch (c) {
+      case "low":
+        return 1;
+      case "medium":
+        return 2;
+      case "high":
+        return 3;
+      default:
+        return 2;
+    }
+  });
+
+  const avgScore =
+    complexityScores.reduce((sum, score) => sum + score, 0) /
+    complexityScores.length;
+
+  if (avgScore <= 1.5) return "low";
+  if (avgScore <= 2.5) return "medium";
+  return "high";
 }
 
 /**
@@ -313,66 +321,4 @@ export async function analyzeRepository(
     console.error("Repository analysis failed:", error);
     throw new Error(`Failed to analyze repository ${owner}/${repo}: ${error}`);
   }
-}
-
-/**
- * Map internal subsystem types to test-expected types
- */
-function mapSubsystemType(
-  internalType:
-    | "feature"
-    | "service"
-    | "utility"
-    | "infrastructure"
-    | "cli"
-    | "api"
-    | "frontend"
-    | "backend"
-):
-  | "feature"
-  | "service"
-  | "utility"
-  | "cli"
-  | "api"
-  | "data"
-  | "auth"
-  | "core" {
-  const typeMap: Record<
-    string,
-    "feature" | "service" | "utility" | "cli" | "api" | "data" | "auth" | "core"
-  > = {
-    feature: "feature",
-    service: "service",
-    utility: "utility",
-    infrastructure: "core",
-    cli: "cli",
-    api: "api",
-    frontend: "feature",
-    backend: "service",
-  };
-
-  return typeMap[internalType] || "core";
-}
-
-/**
- * Calculate overall complexity from individual subsystem complexities
- */
-function calculateOverallComplexity(
-  complexities: string[]
-): "low" | "medium" | "high" {
-  const counts = { low: 0, medium: 0, high: 0 };
-
-  complexities.forEach((complexity) => {
-    const normalized = complexity.toLowerCase();
-    if (normalized in counts) {
-      counts[normalized as keyof typeof counts]++;
-    }
-  });
-
-  // If majority is high, return high
-  if (counts.high > counts.medium + counts.low) return "high";
-  // If majority is medium, return medium
-  if (counts.medium > counts.low) return "medium";
-  // Default to low
-  return "low";
 }

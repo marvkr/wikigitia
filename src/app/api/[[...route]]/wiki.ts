@@ -207,6 +207,8 @@ async function generateWikiInBackground(
         const wikiContent = await WikiGenerator.generateWikiPage(
           {
             ...subsystem,
+            description: subsystem.description || "No description available",
+            complexity: subsystem.complexity || "medium",
             files: subsystem.files || [],
             entryPoints: subsystem.entryPoints || [],
             dependencies: subsystem.dependencies || [],
