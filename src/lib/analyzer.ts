@@ -1,5 +1,4 @@
-import { generateObject } from "ai";
-import { z } from "zod";
+import { generateText } from "ai";
 import { GitHubService } from "./github";
 import { nanoid } from "nanoid";
 import { modelGPT41 } from "./llm-providers";
@@ -63,31 +62,6 @@ interface RepositoryAnalysis {
   };
 }
 
-// Zod schema for AI response validation
-const SubsystemSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  type: z.enum([
-    "feature",
-    "service",
-    "utility",
-    "infrastructure",
-    "cli",
-    "api",
-    "frontend",
-    "backend",
-  ]),
-  files: z.array(z.string()),
-  entryPoints: z.array(z.string()),
-  dependencies: z.array(z.string()),
-  complexity: z.enum(["low", "medium", "high"]),
-});
-
-const AnalysisSchema = z.object({
-  summary: z.string(),
-  subsystems: z.array(SubsystemSchema),
-});
-
 export class AIAnalyzer {
   static async analyzeRepository(
     owner: string,
@@ -105,40 +79,45 @@ export class AIAnalyzer {
         keyFiles
       );
 
-      const result = await generateObject({
+      const result = await generateText({
         model: modelGPT41,
-        schema: AnalysisSchema,
-        messages: [
-          {
-            role: "system",
-            content: `You are an expert software architect analyzing GitHub repositories. Your task is to identify high-level subsystems that balance both feature-driven and technical perspectives. Focus on key features, user services, authentication flows, data layers, CLI tools, and core architectural components.
+        prompt: prompt,
+        system: `You are an expert software architect analyzing GitHub repositories.
 
-Analyze the repository structure and identify 3-8 meaningful subsystems that would help a developer understand the codebase. Each subsystem should represent either:
-1. A major feature or user-facing capability
-2. A technical component or service layer
-3. Infrastructure or tooling that supports the application
-4. A distinct architectural layer (frontend, backend, API, etc.)
+Analyze the repository structure and identify 3-8 main subsystems or components that would help a developer understand the codebase.
 
 For each subsystem, provide:
 - A clear, descriptive name
 - What it does and why it's important
-- The appropriate type classification
-- Key files that belong to it (be selective, include the most important ones)
-- Main entry points (files that serve as interfaces or starting points)
-- External dependencies it relies on
-- Complexity assessment based on code structure and responsibilities`,
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
+- The type (feature/service/utility/infrastructure/cli/api/frontend/backend)
+- Key files that belong to it (ONLY list actual file paths from the repository, NOT descriptions)
+- Main entry points (ONLY actual file paths, NOT descriptions)
+- External dependencies it uses (library names, NOT file paths)
+- Complexity assessment (low/medium/high)
+
+IMPORTANT: When listing files and entry points, provide ONLY actual file paths that exist in the repository. Do NOT provide descriptions like "README.md in each subdirectory" or "Each subdirectory under the root". Use exact paths like "src/components/Button.tsx" or "docs/README.md".
+
+Format your response as simple text, not JSON. Use this structure:
+
+SUMMARY: [Brief overview of the repository]
+
+SUBSYSTEM: [Name]
+TYPE: [type]
+DESCRIPTION: [what it does]
+FILES: [file1, file2, file3]
+ENTRY_POINTS: [main.js, index.ts]
+DEPENDENCIES: [express, react]
+COMPLEXITY: [low/medium/high]
+
+SUBSYSTEM: [Next subsystem...]
+...
+
+Focus on subsystems that would be meaningful to a developer trying to understand the codebase. Aim for 3-8 subsystems total.`,
         temperature: 0.3,
       });
 
-      const { object } = result;
-
-      return object as InternalRepositoryAnalysis;
+      // Parse the natural language response
+      return this.parseAnalysisResponse(result.text);
     } catch (error) {
       console.error("AI Analysis error:", error);
       throw new Error(`AI analysis failed: ${error}`);
@@ -232,6 +211,144 @@ For each subsystem, provide:
 - Complexity assessment
 
 Focus on subsystems that would be meaningful to a developer trying to understand the codebase. Aim for 3-8 subsystems total.`;
+  }
+
+  private static parseAnalysisResponse(
+    text: string
+  ): InternalRepositoryAnalysis {
+    const lines = text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line);
+
+    let summary = "";
+    const subsystems: SubsystemAnalysis[] = [];
+    let currentSubsystem: Partial<SubsystemAnalysis> | null = null;
+
+    for (const line of lines) {
+      if (line.startsWith("SUMMARY:")) {
+        summary = line.replace("SUMMARY:", "").trim();
+      } else if (line.startsWith("SUBSYSTEM:")) {
+        // Save previous subsystem if exists
+        if (currentSubsystem && currentSubsystem.name) {
+          subsystems.push(this.completeSubsystem(currentSubsystem));
+        }
+        // Start new subsystem
+        currentSubsystem = {
+          name: line.replace("SUBSYSTEM:", "").trim(),
+        };
+      } else if (currentSubsystem) {
+        if (line.startsWith("TYPE:")) {
+          const type = line.replace("TYPE:", "").trim().toLowerCase();
+          currentSubsystem.type = this.normalizeType(type);
+        } else if (line.startsWith("DESCRIPTION:")) {
+          currentSubsystem.description = line
+            .replace("DESCRIPTION:", "")
+            .trim();
+        } else if (line.startsWith("FILES:")) {
+          const filesStr = line.replace("FILES:", "").trim();
+          currentSubsystem.files = this.parseList(filesStr);
+        } else if (line.startsWith("ENTRY_POINTS:")) {
+          const entryPointsStr = line.replace("ENTRY_POINTS:", "").trim();
+          currentSubsystem.entryPoints = this.parseList(entryPointsStr);
+        } else if (line.startsWith("DEPENDENCIES:")) {
+          const depsStr = line.replace("DEPENDENCIES:", "").trim();
+          currentSubsystem.dependencies = this.parseList(depsStr);
+        } else if (line.startsWith("COMPLEXITY:")) {
+          const complexity = line
+            .replace("COMPLEXITY:", "")
+            .trim()
+            .toLowerCase();
+          currentSubsystem.complexity = this.normalizeComplexity(complexity);
+        }
+      }
+    }
+
+    // Don't forget the last subsystem
+    if (currentSubsystem && currentSubsystem.name) {
+      subsystems.push(this.completeSubsystem(currentSubsystem));
+    }
+
+    return {
+      summary: summary || "Repository analysis completed",
+      subsystems:
+        subsystems.length > 0 ? subsystems : this.createFallbackSubsystems(),
+    };
+  }
+
+  private static completeSubsystem(
+    partial: Partial<SubsystemAnalysis>
+  ): SubsystemAnalysis {
+    return {
+      name: partial.name || "Unknown Component",
+      description: partial.description || "Component description not available",
+      type: partial.type || "utility",
+      files: partial.files || [],
+      entryPoints: partial.entryPoints || [],
+      dependencies: partial.dependencies || [],
+      complexity: partial.complexity || "medium",
+    };
+  }
+
+  private static normalizeType(type: string): SubsystemAnalysis["type"] {
+    const typeMap: Record<string, SubsystemAnalysis["type"]> = {
+      feature: "feature",
+      service: "service",
+      utility: "utility",
+      infrastructure: "infrastructure",
+      cli: "cli",
+      api: "api",
+      frontend: "frontend",
+      backend: "backend",
+    };
+    return typeMap[type] || "utility";
+  }
+
+  private static normalizeComplexity(complexity: string): string {
+    if (complexity.includes("low")) return "low";
+    if (complexity.includes("high")) return "high";
+    return "medium";
+  }
+
+  private static parseList(str: string): string[] {
+    if (!str || str === "none" || str === "n/a") return [];
+
+    const items = str
+      .split(/[,;]/)
+      .map((item) => item.trim())
+      .filter((item) => item && item !== "none" && item !== "n/a");
+
+    // Filter out invalid file paths - keep only items that look like actual file paths
+    return items.filter((item) => {
+      // Skip items that are clearly descriptions or explanations
+      if (item.includes(" ") && !item.includes("/")) return false;
+      if (item.includes("(") || item.includes(")")) return false;
+      if (item.includes("each") || item.includes("specific")) return false;
+      if (item.includes("subdirectory") || item.includes("directory"))
+        return false;
+      if (item.length > 100) return false; // Very long strings are likely descriptions
+      if (item.includes("e.g.") || item.includes("such as")) return false;
+
+      // Keep items that look like file paths
+      if (item.includes("/") || item.includes(".")) return true;
+
+      // Skip everything else that doesn't look like a file path
+      return false;
+    });
+  }
+
+  private static createFallbackSubsystems(): SubsystemAnalysis[] {
+    return [
+      {
+        name: "Core Application",
+        description: "Main application logic and components",
+        type: "feature",
+        files: [],
+        entryPoints: [],
+        dependencies: [],
+        complexity: "medium",
+      },
+    ];
   }
 }
 

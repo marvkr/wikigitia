@@ -64,8 +64,19 @@ export function RepositoryInputForm({
   useEffect(() => {
     if (initialUrl) {
       form.reset({ url: initialUrl });
+      // Auto-submit when initialUrl is provided (for re-analyze functionality)
+      const timer = setTimeout(async () => {
+        // Trigger validation first
+        const isValid = await form.trigger("url");
+        if (isValid) {
+          const values = form.getValues();
+          onSubmit(values);
+        }
+      }, 100); // Small delay to ensure form is properly reset
+
+      return () => clearTimeout(timer);
     }
-  }, [initialUrl, form]);
+  }, [initialUrl, form, onSubmit]);
 
   function onSubmit(values: FormData) {
     createAnalysis(values, {
@@ -77,6 +88,16 @@ export function RepositoryInputForm({
       },
     });
   }
+
+  // Function to handle example button clicks with auto-submission
+  const handleExampleClick = async (url: string) => {
+    form.setValue("url", url);
+    // Trigger validation and submit
+    const isValid = await form.trigger("url");
+    if (isValid) {
+      onSubmit({ url });
+    }
+  };
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -140,7 +161,7 @@ export function RepositoryInputForm({
                 variant="outline"
                 size="sm"
                 className="text-xs"
-                onClick={() => form.setValue("url", url)}
+                onClick={() => handleExampleClick(url)}
                 disabled={isPending}>
                 {url.split("/").slice(-2).join("/")}
               </Button>

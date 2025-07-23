@@ -69,7 +69,7 @@ function WikiSidebarWrapper({ repositoryId }: { repositoryId: string }) {
         language: wiki.repository.language,
         stars: wiki.repository.stars,
       }}
-      subsystems={wiki.subsystems.map(s => ({
+      subsystems={wiki.subsystems.map((s) => ({
         id: s.id,
         name: s.name,
         type: s.type,

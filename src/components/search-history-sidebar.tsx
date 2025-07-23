@@ -39,7 +39,7 @@ export function SearchHistorySidebar({
     if (onReanalyze) {
       onReanalyze(url);
     } else {
-      // Navigate to home with the URL
+      // Navigate to home with the URL - this will auto-trigger analysis
       router.push(`/?reanalyze=${encodeURIComponent(url)}`);
     }
   };

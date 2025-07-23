@@ -3,10 +3,10 @@ lockfileVersion: '6.0'
 dependencies:
   '@ai-sdk/openai':
     specifier: ^1.3.23
-    version: 1.3.23(zod@4.0.5)
+    version: 1.3.23(zod@3.25.76)
   '@hono/zod-validator':
     specifier: ^0.7.2
-    version: 0.7.2(hono@4.8.5)(zod@4.0.5)
+    version: 0.7.2(hono@4.8.5)(zod@3.25.76)
   '@hookform/resolvers':
     specifier: ^5.1.1
     version: 5.1.1(react-hook-form@7.60.0)
@@ -87,7 +87,7 @@ dependencies:
     version: 5.83.0(react@19.1.0)
   ai:
     specifier: ^4.3.19
-    version: 4.3.19(react@19.1.0)(zod@4.0.5)
+    version: 4.3.19(react@19.1.0)(zod@3.25.76)
   class-variance-authority:
     specifier: ^0.7.1
     version: 0.7.1
@@ -108,7 +108,7 @@ dependencies:
     version: 0.44.3(@neondatabase/serverless@1.0.1)
   drizzle-zod:
     specifier: ^0.8.2
-    version: 0.8.2(drizzle-orm@0.44.3)(zod@4.0.5)
+    version: 0.8.2(drizzle-orm@0.44.3)(zod@3.25.76)
   hono:
     specifier: ^4.8.5
     version: 4.8.5
@@ -137,8 +137,8 @@ dependencies:
     specifier: ^3.3.1
     version: 3.3.1
   zod:
-    specifier: ^4.0.5
-    version: 4.0.5
+    specifier: ^3.25.76
+    version: 3.25.76
 
 devDependencies:
   '@eslint/eslintrc':
@@ -204,18 +204,18 @@ devDependencies:
 
 packages:
 
-  /@ai-sdk/openai@1.3.23(zod@4.0.5):
+  /@ai-sdk/openai@1.3.23(zod@3.25.76):
     resolution: {integrity: sha512-86U7rFp8yacUAOE/Jz8WbGcwMCqWvjK33wk5DXkfnAOEn3mx2r7tNSJdjukQFZbAK97VMXGPPHxF+aEARDXRXQ==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.0.0
     dependencies:
       '@ai-sdk/provider': 1.1.3
-      '@ai-sdk/provider-utils': 2.2.8(zod@4.0.5)
-      zod: 4.0.5
+      '@ai-sdk/provider-utils': 2.2.8(zod@3.25.76)
+      zod: 3.25.76
     dev: false
 
-  /@ai-sdk/provider-utils@2.2.8(zod@4.0.5):
+  /@ai-sdk/provider-utils@2.2.8(zod@3.25.76):
     resolution: {integrity: sha512-fqhG+4sCVv8x7nFzYnFo19ryhAa3w096Kmc3hWxMQfW/TubPOmt3A6tYZhl4mUfQWWQMsuSkLrtjlWuXBVSGQA==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -224,7 +224,7 @@ packages:
       '@ai-sdk/provider': 1.1.3
       nanoid: 3.3.11
       secure-json-parse: 2.7.0
-      zod: 4.0.5
+      zod: 3.25.76
     dev: false
 
   /@ai-sdk/provider@1.1.3:
@@ -234,7 +234,7 @@ packages:
       json-schema: 0.4.0
     dev: false
 
-  /@ai-sdk/react@1.2.12(react@19.1.0)(zod@4.0.5):
+  /@ai-sdk/react@1.2.12(react@19.1.0)(zod@3.25.76):
     resolution: {integrity: sha512-jK1IZZ22evPZoQW3vlkZ7wvjYGYF+tRBKXtrcolduIkQ/m/sOAVcVeVDUDvh1T91xCnWCdUGCPZg2avZ90mv3g==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -244,24 +244,24 @@ packages:
       zod:
         optional: true
     dependencies:
-      '@ai-sdk/provider-utils': 2.2.8(zod@4.0.5)
-      '@ai-sdk/ui-utils': 1.2.11(zod@4.0.5)
+      '@ai-sdk/provider-utils': 2.2.8(zod@3.25.76)
+      '@ai-sdk/ui-utils': 1.2.11(zod@3.25.76)
       react: 19.1.0
       swr: 2.3.4(react@19.1.0)
       throttleit: 2.1.0
-      zod: 4.0.5
+      zod: 3.25.76
     dev: false
 
-  /@ai-sdk/ui-utils@1.2.11(zod@4.0.5):
+  /@ai-sdk/ui-utils@1.2.11(zod@3.25.76):
     resolution: {integrity: sha512-3zcwCc8ezzFlwp3ZD15wAPjf2Au4s3vAbKsXQVyhxODHcmu0iyPO2Eua6D/vicq/AUm/BAo60r97O6HU+EI0+w==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.23.8
     dependencies:
       '@ai-sdk/provider': 1.1.3
-      '@ai-sdk/provider-utils': 2.2.8(zod@4.0.5)
-      zod: 4.0.5
-      zod-to-json-schema: 3.24.6(zod@4.0.5)
+      '@ai-sdk/provider-utils': 2.2.8(zod@3.25.76)
+      zod: 3.25.76
+      zod-to-json-schema: 3.24.6(zod@3.25.76)
     dev: false
 
   /@alloc/quick-lru@5.2.0:
@@ -870,14 +870,14 @@ packages:
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
     dev: false
 
-  /@hono/zod-validator@0.7.2(hono@4.8.5)(zod@4.0.5):
+  /@hono/zod-validator@0.7.2(hono@4.8.5)(zod@3.25.76):
     resolution: {integrity: sha512-ub5eL/NeZ4eLZawu78JpW/J+dugDAYhwqUIdp9KYScI6PZECij4Hx4UsrthlEUutqDDhPwRI0MscUfNkvn/mqQ==}
     peerDependencies:
       hono: '>=3.9.0'
       zod: ^3.25.0 || ^4.0.0
     dependencies:
       hono: 4.8.5
-      zod: 4.0.5
+      zod: 3.25.76
     dev: false
 
   /@hookform/resolvers@5.1.1(react-hook-form@7.60.0):
@@ -3310,7 +3310,7 @@ packages:
     hasBin: true
     dev: true
 
-  /ai@4.3.19(react@19.1.0)(zod@4.0.5):
+  /ai@4.3.19(react@19.1.0)(zod@3.25.76):
     resolution: {integrity: sha512-dIE2bfNpqHN3r6IINp9znguYdhIOheKW2LDigAMrgt/upT3B8eBGPSCblENvaZGoq+hxaN9fSMzjWpbqloP+7Q==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -3321,13 +3321,13 @@ packages:
         optional: true
     dependencies:
       '@ai-sdk/provider': 1.1.3
-      '@ai-sdk/provider-utils': 2.2.8(zod@4.0.5)
-      '@ai-sdk/react': 1.2.12(react@19.1.0)(zod@4.0.5)
-      '@ai-sdk/ui-utils': 1.2.11(zod@4.0.5)
+      '@ai-sdk/provider-utils': 2.2.8(zod@3.25.76)
+      '@ai-sdk/react': 1.2.12(react@19.1.0)(zod@3.25.76)
+      '@ai-sdk/ui-utils': 1.2.11(zod@3.25.76)
       '@opentelemetry/api': 1.9.0
       jsondiffpatch: 0.6.0
       react: 19.1.0
-      zod: 4.0.5
+      zod: 3.25.76
     dev: false
 
   /ajv@6.12.6:
@@ -3938,14 +3938,14 @@ packages:
       '@neondatabase/serverless': 1.0.1
     dev: false
 
-  /drizzle-zod@0.8.2(drizzle-orm@0.44.3)(zod@4.0.5):
+  /drizzle-zod@0.8.2(drizzle-orm@0.44.3)(zod@3.25.76):
     resolution: {integrity: sha512-9Do/16OjFFNrQDZgvMtxtDDwKWbFOxUAIwNPKX98SfxrP8H18vhN1BvNXbhelLcdgCE7GEaXDJqBjMExSkhpkA==}
     peerDependencies:
       drizzle-orm: '>=0.36.0'
       zod: ^3.25.1
     dependencies:
       drizzle-orm: 0.44.3(@neondatabase/serverless@1.0.1)
-      zod: 4.0.5
+      zod: 3.25.76
     dev: false
 
   /dunder-proto@1.0.1:
@@ -6865,14 +6865,14 @@ packages:
     engines: {node: '>=10'}
     dev: true
 
-  /zod-to-json-schema@3.24.6(zod@4.0.5):
+  /zod-to-json-schema@3.24.6(zod@3.25.76):
     resolution: {integrity: sha512-h/z3PKvcTcTetyjl1fkj79MHNEjm+HpD6NXheWjzOekY7kV+lwDYnHw+ivHkijnCSMz1yJaWBD9vu/Fcmk+vEg==}
     peerDependencies:
       zod: ^3.24.1
     dependencies:
-      zod: 4.0.5
+      zod: 3.25.76
     dev: false
 
-  /zod@4.0.5:
-    resolution: {integrity: sha512-/5UuuRPStvHXu7RS+gmvRf4NXrNxpSllGwDnCBcJZtQsKrviYXm54yDGV2KYNLT5kq0lHGcl7lqWJLgSaG+tgA==}
+  /zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
     dev: false
