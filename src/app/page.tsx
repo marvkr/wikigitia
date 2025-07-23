@@ -1,103 +1,204 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { Github } from "lucide-react";
+import { RepositoryInputForm } from "@/components/repository-input-form";
+import { AnalysisProgress } from "@/components/analysis-progress";
+import { WikiDisplay } from "@/components/wiki-display";
+import { SearchHistorySidebar } from "@/components/search-history-sidebar";
+import { Navbar } from "@/components/navbar";
+import { Sidebar, SidebarContent } from "@/components/ui/sidebar";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [currentRepositoryId, setCurrentRepositoryId] = useState<string | null>(
+    null
+  );
+  const [reAnalyzeUrl, setReAnalyzeUrl] = useState<string | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const handleAnalysisStarted = (jobId: string) => {
+    setCurrentJobId(jobId);
+    setCurrentRepositoryId(null);
+  };
+
+  const handleAnalysisComplete = (repoId: string) => {
+    setCurrentRepositoryId(repoId);
+    setCurrentJobId(null);
+  };
+
+  const handleViewWiki = (repositoryId: string) => {
+    setCurrentRepositoryId(repositoryId);
+    setCurrentJobId(null);
+  };
+
+  const handleReanalyze = (url: string) => {
+    // Set the URL in the form and reset other states
+    setCurrentJobId(null);
+    setCurrentRepositoryId(null);
+    setReAnalyzeUrl(url);
+  };
+
+  const handleNewAnalysis = () => {
+    setCurrentJobId(null);
+    setCurrentRepositoryId(null);
+    setReAnalyzeUrl(null);
+  };
+
+  // Show wiki if repository ID is available
+  if (currentRepositoryId) {
+    return (
+      <>
+        <Sidebar>
+          <SidebarContent>
+            <SearchHistorySidebar
+              onViewWiki={handleViewWiki}
+              onReanalyze={handleReanalyze}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          </SidebarContent>
+        </Sidebar>
+        <main className="flex-1">
+          <Navbar />
+          <WikiDisplay
+            repositoryId={currentRepositoryId}
+            onBack={handleNewAnalysis}
+          />
+        </main>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Sidebar>
+        <SidebarContent>
+          <SearchHistorySidebar
+            onViewWiki={handleViewWiki}
+            onReanalyze={handleReanalyze}
+          />
+        </SidebarContent>
+      </Sidebar>
+
+      <main className="flex-1">
+        <Navbar />
+        <div className="min-h-screen bg-background">
+          <div className="container mx-auto px-4 py-12">
+            <div className="max-w-4xl mx-auto space-y-8">
+              {/* Header */}
+              <div className="text-center space-y-4">
+                <h1 className="text-4xl font-bold tracking-tight text-foreground flex items-center justify-center gap-3">
+                  <Github className="h-10 w-10" />
+                  Wikigitia
+                </h1>
+                <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                  Transform any GitHub repository into comprehensive,
+                  AI-generated documentation. Perfect for developers who want to
+                  understand codebases quickly.
+                </p>
+              </div>
+
+              {/* Main Content */}
+              <div className="space-y-8">
+                {!currentJobId ? (
+                  <RepositoryInputForm
+                    onAnalysisStarted={handleAnalysisStarted}
+                    initialUrl={reAnalyzeUrl || undefined}
+                  />
+                ) : (
+                  <div className="space-y-6">
+                    <AnalysisProgress
+                      jobId={currentJobId}
+                      onComplete={handleAnalysisComplete}
+                    />
+
+                    <div className="text-center">
+                      <button
+                        onClick={handleNewAnalysis}
+                        className="text-sm text-muted-foreground hover:text-foreground underline">
+                        ← Start a new analysis
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Features */}
+              <div className="grid md:grid-cols-3 gap-6 mt-16">
+                <div className="text-center p-6 bg-card rounded-lg shadow-sm border">
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <svg
+                      className="w-6 h-6 text-primary"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="font-semibold text-card-foreground mb-2">
+                    Intelligent Analysis
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    AI-powered analysis identifies key subsystems, features, and
+                    architecture patterns
+                  </p>
+                </div>
+
+                <div className="text-center p-6 bg-card rounded-lg shadow-sm border">
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <svg
+                      className="w-6 h-6 text-primary"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="font-semibold text-card-foreground mb-2">
+                    Rich Citations
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Every claim is backed by direct links to specific lines of
+                    code in the repository
+                  </p>
+                </div>
+
+                <div className="text-center p-6 bg-card rounded-lg shadow-sm border">
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <svg
+                      className="w-6 h-6 text-primary"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="font-semibold text-card-foreground mb-2">
+                    Wiki-Style Docs
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Navigate through organized, readable documentation with
+                    table of contents
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+    </>
   );
 }
