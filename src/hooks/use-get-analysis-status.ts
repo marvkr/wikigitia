@@ -8,6 +8,7 @@ interface AnalysisStatusResponse {
   startedAt: string;
   completedAt?: string;
   repositoryId?: string;
+  repositoryName?: string;
   result?: {
     summary: string;
     subsystemCount: number;

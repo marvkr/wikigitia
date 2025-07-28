@@ -110,25 +110,36 @@ const app = new Hono()
       const { jobId } = c.req.valid("param");
 
       try {
-        const [job] = await db
-          .select()
+        const [jobWithRepo] = await db
+          .select({
+            jobId: analysisJobs.id,
+            status: analysisJobs.status,
+            startedAt: analysisJobs.startedAt,
+            completedAt: analysisJobs.completedAt,
+            result: analysisJobs.result,
+            error: analysisJobs.errorMessage,
+            repositoryId: analysisJobs.repositoryId,
+            repositoryName: repositories.name,
+          })
           .from(analysisJobs)
+          .leftJoin(repositories, eq(analysisJobs.repositoryId, repositories.id))
           .where(eq(analysisJobs.id, jobId))
           .limit(1);
 
-        if (!job) {
+        if (!jobWithRepo) {
           return c.json({ error: "Analysis job not found" }, 404);
         }
 
         return c.json(
           {
             jobId,
-            status: job.status,
-            startedAt: job.startedAt,
-            completedAt: job.completedAt,
-            result: job.result,
-            error: job.errorMessage,
-            repositoryId: job.repositoryId,
+            status: jobWithRepo.status,
+            startedAt: jobWithRepo.startedAt,
+            completedAt: jobWithRepo.completedAt,
+            result: jobWithRepo.result,
+            error: jobWithRepo.error,
+            repositoryId: jobWithRepo.repositoryId,
+            repositoryName: jobWithRepo.repositoryName,
           },
           200
         );
