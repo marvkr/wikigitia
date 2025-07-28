@@ -1,18 +1,19 @@
 "use client";
 
+import React, { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { 
-  BookOpen, 
-  Package, 
-  Globe, 
-  Settings, 
-  Terminal, 
-  Code, 
-  Database, 
-  Layers 
+import {
+  BookOpen,
+  Package,
+  Globe,
+  Settings,
+  Terminal,
+  Code,
+  Database,
+  Layers
 } from "lucide-react";
 
 interface WikiSidebarProps {
@@ -90,34 +91,41 @@ export function WikiSidebar({
   currentPageId,
   onPageSelect,
 }: WikiSidebarProps) {
-  const groupedPages = pages.reduce((acc, page) => {
-    const subsystemId = page.subsystem.id;
-    if (!acc[subsystemId]) {
-      acc[subsystemId] = [];
-    }
-    acc[subsystemId].push(page);
-    return acc;
-  }, {} as Record<string, typeof pages>);
+  // Memoize expensive computations to prevent re-renders
+  const groupedPages = useMemo(() => {
+    return pages.reduce((acc, page) => {
+      const subsystemId = page.subsystem.id;
+      if (!acc[subsystemId]) {
+        acc[subsystemId] = [];
+      }
+      acc[subsystemId].push(page);
+      return acc;
+    }, {} as Record<string, typeof pages>);
+  }, [pages]);
 
   // Group subsystems by type for better organization
-  const groupedSubsystems = subsystems.reduce((acc, subsystem) => {
-    const type = subsystem.type;
-    if (!acc[type]) {
-      acc[type] = [];
-    }
-    acc[type].push(subsystem);
-    return acc;
-  }, {} as Record<string, typeof subsystems>);
+  const { groupedSubsystems, sortedTypes } = useMemo(() => {
+    const grouped = subsystems.reduce((acc, subsystem) => {
+      const type = subsystem.type;
+      if (!acc[type]) {
+        acc[type] = [];
+      }
+      acc[type].push(subsystem);
+      return acc;
+    }, {} as Record<string, typeof subsystems>);
 
-  const typeOrder = ["core", "feature", "service", "api", "cli", "utility", "data"];
-  const sortedTypes = Object.keys(groupedSubsystems).sort((a, b) => {
-    const aIndex = typeOrder.indexOf(a);
-    const bIndex = typeOrder.indexOf(b);
-    if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
-    if (aIndex === -1) return 1;
-    if (bIndex === -1) return -1;
-    return aIndex - bIndex;
-  });
+    const typeOrder = ["core", "feature", "service", "api", "cli", "utility", "data"];
+    const sorted = Object.keys(grouped).sort((a, b) => {
+      const aIndex = typeOrder.indexOf(a);
+      const bIndex = typeOrder.indexOf(b);
+      if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+
+    return { groupedSubsystems: grouped, sortedTypes: sorted };
+  }, [subsystems]);
 
   return (
     <div className="flex h-full flex-col w-full overflow-hidden">
@@ -162,10 +170,10 @@ export function WikiSidebar({
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-2">
                 {type}s
               </div>
-              
+
               {groupedSubsystems[type].map((subsystem) => {
                 const subsystemPages = groupedPages[subsystem.id] || [];
-                
+
                 return (
                   <div key={subsystem.id} className="space-y-1">
                     {/* If there are pages, make the subsystem name clickable to go to the first page */}

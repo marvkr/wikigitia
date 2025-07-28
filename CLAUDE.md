@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Tech Stack Guide
 
 This guide explains how we use **Hono**, **Drizzle ORM**, **drizzle-zod**, and **TanStack Query** to build type-safe, full-stack APIs in our Next.js application.
@@ -74,472 +78,330 @@ pnpm test:run          # Full validation
 - All tests pass (`pnpm test:run` succeeds)
 - PROJECT.md requirements met (all 21 requirements tests pass)
 
-### **Using Tests as PROJECT.md Validation Checklist**
+## Common Development Commands
 
-**Our requirements tests serve as a complete specification for PROJECT.md:**
+### Development
+```bash
+# Start development server
+pnpm dev
 
-```typescript
-// tests/project-requirements.test.ts defines exactly what to build:
+# Start Inngest dev server for background jobs (separate terminal)
+pnpm dev:inngest
 
-// ✅ Repository Analyser (7 tests)
-expect(analysis).toMatchObject({
-  repository: { owner: "Textualize", name: "rich-cli" },
-  subsystems: expect.arrayContaining([
-    expect.objectContaining({
-      name: expect.any(String),
-      type: expect.stringMatching(
-        /^(feature|service|utility|cli|api|data|auth|core)$/
-      ),
-      files: expect.arrayContaining([expect.any(String)]),
-    }),
-  ]),
-});
+# Build for production
+pnpm build
 
-// ✅ Wiki Generator (3 tests)
-expect(wikiPage).toMatchObject({
-  title: expect.stringContaining("CLI Interface"),
-  content: expect.stringMatching(/.{200,}/),
-  citations: expect.arrayContaining([
-    expect.objectContaining({
-      url: expect.stringMatching(/https:\/\/github\.com/),
-    }),
-  ]),
-});
-
-// ✅ API Endpoints (4 tests)
-// POST /api/analyze, GET /api/analyze/:jobId, POST /api/wiki/generate
-
-// ✅ Frontend Integration (4 tests)
-// useAnalyzeRepository hook, useGetAnalysisStatus hook, React components
-
-// ✅ Deployment (2 tests)
-// Public accessibility, CORS configuration
-
-// ✅ End-to-End (1 test)
-// Complete analysis-to-wiki workflow
+# Start production server
+pnpm start
 ```
 
-**Progress Tracking:**
+### Testing
+```bash
+# Run all tests
+pnpm test:run
+
+# Run tests in watch mode
+pnpm test:watch
+
+# Run specific test suites
+pnpm test:core          # Core functionality tests
+pnpm test:requirements  # PROJECT.md requirements validation
+
+# Run tests with UI
+pnpm test:ui
+
+# Generate coverage report
+pnpm test:coverage
+```
+
+### Database
+```bash
+# Push schema changes to database
+pnpm drizzle-kit push
+
+# Generate migrations
+pnpm drizzle-kit generate
+
+# View Drizzle Studio (database GUI)
+pnpm drizzle-kit studio
+```
+
+### Code Quality
+```bash
+# Lint code
+pnpm lint
+
+# Run TypeScript type checking
+pnpm tsc --noEmit
+```
+
+## Architecture Overview
+
+### High-Level Architecture
+
+Wikigitia is an automatic Wiki Generator built as a modern full-stack TypeScript application:
+
+**Core Flow:**
+1. **Repository Analysis** - User submits GitHub repo → AI analyzes structure → Identifies subsystems
+2. **Background Processing** - Inngest handles long-running analysis jobs
+3. **Wiki Generation** - AI creates comprehensive documentation with citations
+4. **Type-Safe API** - Hono + Drizzle + TanStack Query for end-to-end type safety
+
+### Key Technologies
+
+- **Next.js 15** - React framework with App Router
+- **Hono** - Fast, lightweight API framework with excellent TypeScript support
+- **Drizzle ORM** - Type-safe database queries with PostgreSQL
+- **Inngest** - Background job processing for repository analysis
+- **TanStack Query** - Server state management with intelligent caching
+- **OpenAI GPT-4** - Repository analysis and content generation
+- **Vercel AI SDK** - AI integration utilities
+- **shadcn/ui** - Component library built on Radix UI
+
+### Database Schema
+
+Located in `src/db/schema.ts`, our schema includes:
+
+- **repositories** - GitHub repository metadata
+- **analysisJobs** - Background job tracking with status
+- **subsystems** - Identified code subsystems (features, services, utilities, etc.)
+- **wikiPages** - Generated documentation with citations and table of contents
+
+All schemas use drizzle-zod for automatic Zod validation schema generation.
+
+### API Architecture
+
+**Route Structure (`src/app/api/[[...route]]/`):**
+- `route.ts` - Main router with rate limiting and route mounting
+- `analyze.ts` - Repository analysis endpoints
+- `wiki.ts` - Wiki generation and retrieval endpoints
+- `repositories.ts` - Repository management endpoints
+
+**Key Features:**
+- Rate limiting (100 requests per 15 minutes per IP)
+- End-to-end type safety with Hono RPC
+- Automatic request/response validation with drizzle-zod
+
+### Frontend Architecture
+
+**Component Structure:**
+- `src/components/ui/` - shadcn/ui components (accordion, button, dialog, etc.)
+- `src/components/` - Custom application components
+- `src/hooks/` - TanStack Query hooks for API interactions
+- `src/providers/` - React context providers
+
+**State Management:**
+- TanStack Query for server state with intelligent caching
+- React state for local UI state
+- Type-safe hooks with Hono RPC client
+
+### Background Jobs (Inngest)
+
+Located in `src/lib/inngest-functions.ts`:
+
+1. **analyzeRepository** - Multi-step repository analysis
+   - Fetches GitHub repository structure
+   - AI analysis to identify subsystems
+   - Stores results in database
+   - Triggers wiki generation
+
+2. **generateWiki** - Wiki page generation
+   - Processes each identified subsystem
+   - Generates comprehensive documentation
+   - Creates citations with line-level links
+   - Handles re-analysis and updates
+
+## Development Patterns
+
+### 1. Database Schema Changes
+
+When modifying `src/db/schema.ts`:
 
 ```bash
-# Current Status Example:
-✅ Foundation Tests: 10/10 passing (GitHub service basics)
-❌ Requirements Tests: 3/21 passing (Repository analysis partially done)
-📊 Total Progress: 13/31 tests passing (42%)
+# Generate migration
+pnpm drizzle-kit generate
+
+# Push to database
+pnpm drizzle-kit push
 ```
 
-**When building features, ensure:**
+Zod schemas are auto-generated, so TypeScript types propagate automatically.
 
-1. **Requirements tests guide implementation** - Use failing tests as specifications
-2. **Core tests still pass** - No regressions in foundation
-3. **Progress is measurable** - Fewer failing tests = more complete PROJECT.md
-4. **Quality maintained** - Clean, working code
+### 2. API Route Development
 
-**If tests fail:**
-
-- 🚨 **Fix the issue** before proceeding
-- 🚨 **Don't commit broken code**
-- 🚨 **Use test output to understand what's missing**
-- 🚨 **Ensure PROJECT.md requirements are being met**
-
-## 1. Database Schema Setup (Drizzle ORM)
-
-### Define Your Schema (`src/db/schema.ts`)
+Follow the existing pattern in `src/app/api/[[...route]]/`:
 
 ```typescript
-import {
-  pgTable,
-  text,
-  varchar,
-  boolean,
-  timestamp,
-} from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { zValidator } from "@hono/zod-validator";
+import { insertSchemaName } from "@/db/schema";
 
-// Define the table
-export const companies = pgTable("company", {
-  id: text("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  email: varchar("email").notNull(),
-  websiteUrl: text("website_url"),
-  verified: boolean("verified").default(false),
-  createdAt: timestamp("created_at"),
-  updatedAt: timestamp("updated_at"),
-});
-
-// Define relations
-export const companiesRelations = relations(companies, ({ many }) => ({
-  users: many(users),
-  products: many(products),
-}));
-```
-
-### Generate Zod Schemas with drizzle-zod
-
-```typescript
-// Auto-generate Zod schemas from Drizzle tables
-export const insertCompanySchema = createInsertSchema(companies);
-export const selectCompanySchema = createSelectSchema(companies);
-
-// Export TypeScript types
-export type InsertCompanyType = z.infer<typeof insertCompanySchema>;
-export type SelectCompanyType = z.infer<typeof selectCompanySchema>;
-
-// Create custom schemas for specific use cases
-export const supplierSchema = insertCompanySchema
-  .extend({
-    // Add custom validations
-    isSeller: z.literal(true),
-  })
-  .omit({
-    // Remove fields not needed for creation
-    id: true,
-    createdAt: true,
-    updatedAt: true,
+const app = new Hono()
+  .post("/", zValidator("json", insertSchemaName), async (c) => {
+    const values = c.req.valid("json"); // Fully typed!
+    // Implementation...
   });
 ```
 
-## 2. API Route Setup (Hono)
+### 3. Frontend Hook Development
 
-### Create API Route (`src/app/api/[[...route]]/companies.ts`)
-
-```typescript
-import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
-import { clerkMiddleware, getAuth } from "@hono/clerk-auth";
-import { db } from "@/db/drizzle";
-import { companies, insertCompanySchema } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import * as z from "zod";
-
-const app = new Hono()
-  // GET all companies
-  .get("/", clerkMiddleware(), async (c) => {
-    const data = await db.select().from(companies);
-
-    if (!data) {
-      return c.json({ error: "Failed to fetch companies" }, 500);
-    }
-
-    return c.json({ data }, 200);
-  })
-
-  // GET company by ID with validation
-  .get(
-    "/:id",
-    zValidator(
-      "param",
-      z.object({
-        id: z.string().min(1, "ID is required"),
-      })
-    ),
-    clerkMiddleware(),
-    async (c) => {
-      const { id } = c.req.valid("param");
-      const auth = getAuth(c);
-
-      if (!auth?.userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const [data] = await db
-        .select()
-        .from(companies)
-        .where(eq(companies.id, id))
-        .limit(1);
-
-      if (!data) {
-        return c.json({ error: "Company not found" }, 404);
-      }
-
-      return c.json({ data }, 200);
-    }
-  )
-
-  // POST create company with drizzle-zod validation
-  .post(
-    "/",
-    clerkMiddleware(),
-    zValidator("json", insertCompanySchema), // Auto-generated validation
-    async (c) => {
-      const auth = getAuth(c);
-      const values = c.req.valid("json"); // Fully typed!
-
-      if (!auth?.userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      try {
-        const [data] = await db.insert(companies).values(values).returning();
-
-        return c.json({ data }, 200);
-      } catch (error) {
-        return c.json({ error: "Failed to create company" }, 500);
-      }
-    }
-  )
-
-  // PATCH update company with partial validation
-  .patch(
-    "/",
-    clerkMiddleware(),
-    zValidator("json", insertCompanySchema.partial()), // Partial updates
-    async (c) => {
-      const auth = getAuth(c);
-      const values = c.req.valid("json");
-
-      // Implementation...
-    }
-  );
-
-export default app;
-```
-
-### Register Routes (`src/app/api/[[...route]]/route.ts`)
-
-```typescript
-import { Hono } from "hono";
-import { handle } from "hono/vercel";
-import companies from "./companies";
-import users from "./users";
-// ... other routes
-
-const app = new Hono().basePath("/api");
-
-// Register all routes
-const routes = app.route("/companies", companies).route("/users", users);
-// ... other routes
-
-// Export handlers for Next.js
-export const GET = handle(app);
-export const POST = handle(app);
-export const PUT = handle(app);
-export const DELETE = handle(app);
-export const PATCH = handle(app);
-
-// Export type for RPC client
-export type AppType = typeof routes;
-```
-
-## 3. Hono RPC Client Setup
-
-### Create RPC Client (`src/lib/hono.ts`)
-
-```typescript
-import { hc } from "hono/client";
-import { AppType } from "@/app/api/[[...route]]/route";
-
-// Create typed RPC client
-export const client = hc<AppType>(process.env.NEXT_PUBLIC_APP_URL!);
-```
-
-## 4. TanStack Query Hooks
-
-### Create Query Hooks (`src/hooks/use-get-companies.tsx`)
+Create TanStack Query hooks in `src/hooks/`:
 
 ```typescript
 import { useQuery } from "@tanstack/react-query";
 import { client } from "@/lib/hono";
 
-export const useGetCompanies = () => {
-  const query = useQuery({
-    queryKey: ["companies"],
+export const useGetData = (id?: string) => {
+  return useQuery({
+    queryKey: ["data", id],
     queryFn: async () => {
-      // Fully typed RPC call!
-      const response = await client.api.companies.$get();
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch companies");
-      }
-
-      const { data } = await response.json(); // TypeScript knows the shape!
-      return data;
-    },
-  });
-
-  return query;
-};
-```
-
-### Create Mutation Hooks (`src/hooks/use-create-company.tsx`)
-
-```typescript
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { client } from "@/lib/hono";
-import { InsertCompanyType } from "@/db/schema";
-
-export const useCreateCompany = () => {
-  const queryClient = useQueryClient();
-
-  const mutation = useMutation({
-    mutationFn: async (json: InsertCompanyType) => {
-      // Fully typed request body!
-      const response = await client.api.companies.$post({ json });
-
-      if (!response.ok) {
-        throw new Error("Failed to create company");
-      }
-
+      const response = await client.api.endpoint[":id"].$get({
+        param: { id },
+      });
       return await response.json();
     },
-    onSuccess: () => {
-      // Invalidate and refetch companies
-      queryClient.invalidateQueries({ queryKey: ["companies"] });
-    },
+    enabled: !!id,
   });
-
-  return mutation;
 };
 ```
 
-### Advanced Query Hooks with Parameters
+### 4. Component Development
+
+Use existing patterns with shadcn/ui components and proper TypeScript typing:
 
 ```typescript
-export const useGetCompany = (id?: string) => {
-  const query = useQuery({
-    queryKey: ["company", id],
-    queryFn: async () => {
-      if (!id) throw new Error("ID is required");
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useGetData } from "@/hooks/use-get-data";
 
-      const response = await client.api.companies[":id"].$get({
-        param: { id }, // Typed parameters!
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch company");
-      }
-
-      const { data } = await response.json();
-      return data;
-    },
-    enabled: !!id, // Only run if ID exists
-  });
-
-  return query;
-};
-```
-
-## 5. Frontend Usage
-
-### Using Hooks in Components
-
-```typescript
-import { useGetCompanies, useCreateCompany } from "@/hooks/use-get-companies";
-import { InsertCompanyType } from "@/db/schema";
-
-export function CompanyList() {
-  // Fetch data
-  const { data: companies, isLoading, error } = useGetCompanies();
-
-  // Create mutation
-  const { mutate: createCompany, isPending } = useCreateCompany();
-
-  const handleCreate = (companyData: InsertCompanyType) => {
-    createCompany(companyData, {
-      onSuccess: (data) => {
-        console.log("Company created:", data);
-      },
-      onError: (error) => {
-        console.error("Failed to create company:", error);
-      },
-    });
-  };
-
+export function DataCard({ id }: { id: string }) {
+  const { data, isLoading } = useGetData(id);
+  
   if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-
+  
   return (
-    <div>
-      {companies?.map((company) => (
-        <div key={company.id}>
-          {company.name} {/* Fully typed! */}
-        </div>
-      ))}
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>{data?.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {data?.content}
+      </CardContent>
+    </Card>
   );
 }
 ```
 
-## Key Benefits
+## Performance Considerations
 
-### 🔒 **End-to-End Type Safety**
+### TanStack Query Caching Issues
 
-- Database schema changes automatically propagate to API and frontend
-- Compile-time errors prevent runtime bugs
-- IntelliSense support throughout the stack
+**Problem:** Navigation between wiki pages causes unnecessary re-renders instead of using cached data.
 
-### 📝 **Automatic Validation**
+**Common Causes:**
+- Query keys not properly structured
+- Missing `enabled` conditions
+- Cache invalidation too aggressive
+- Component remounting unnecessarily
 
-- Zod schemas auto-generated from database tables
-- Request/response validation at API level
-- Client-side form validation using the same schemas
+**Solutions:**
+1. Use consistent query keys: `["wiki", repositoryId, subsystemId]`
+2. Implement proper `enabled` conditions in hooks
+3. Use `staleTime` and `cacheTime` appropriately
+4. Avoid unnecessary component re-mounting
 
-### 🚀 **Excellent Developer Experience**
-
-- Hot module replacement works seamlessly
-- Type errors caught at build time
-- Auto-completion for API calls and data structures
-
-### ⚡ **Performance**
-
-- Hono is extremely fast and lightweight
-- TanStack Query provides intelligent caching
-- Edge runtime support with Vercel
-
-### 🔧 **Maintainable Code**
-
-- Single source of truth for data structures
-- Consistent patterns across the application
-- Easy refactoring with TypeScript support
-
-## Common Patterns
-
-### Custom Validation
-
+**Example Fix:**
 ```typescript
-// In schema.ts
-export const createCompanySchema = insertCompanySchema
-  .extend({
-    confirmEmail: z.string().email(),
-  })
-  .refine((data) => data.email === data.confirmEmail, {
-    message: "Emails must match",
-    path: ["confirmEmail"],
+export const useGetWikiPage = (repositoryId?: string, subsystemId?: string) => {
+  return useQuery({
+    queryKey: ["wiki-page", repositoryId, subsystemId],
+    queryFn: async () => { /* ... */ },
+    enabled: !!repositoryId && !!subsystemId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
   });
+};
 ```
 
-### Error Handling
+### Wiki Content Depth
 
-```typescript
-// In API route
-.post("/", zValidator("json", insertCompanySchema), async (c) => {
-  try {
-    // ... logic
-  } catch (error) {
-    if (error.code === "23505") { // Unique constraint violation
-      return c.json({ error: "Company already exists" }, 409);
-    }
-    return c.json({ error: "Internal server error" }, 500);
-  }
-})
+**Current Issue:** Wiki pages could provide more detailed analysis.
+
+**Enhancement Areas:**
+- Code complexity analysis
+- Dependency relationship mapping
+- Architecture pattern identification
+- Performance considerations
+- Security implications
+- Testing coverage analysis
+
+## Environment Variables
+
+Required environment variables (see `.env.example`):
+
+```env
+# Database
+DATABASE_URL="postgresql://..."
+
+# OpenAI
+OPENAI_API_KEY="sk-..."
+
+# Inngest (background jobs)
+INNGEST_EVENT_KEY="..."
+INNGEST_SIGNING_KEY="..."
+
+# App URL
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
 
-### Query Invalidation
+## Project Structure
 
-```typescript
-// In mutation hook
-onSuccess: () => {
-  // Invalidate specific queries
-  queryClient.invalidateQueries({ queryKey: ["companies"] });
-  queryClient.invalidateQueries({ queryKey: ["company", data.id] });
-
-  // Or invalidate all company-related queries
-  queryClient.invalidateQueries({
-    queryKey: ["companies"],
-    exact: false
-  });
-},
+```
+src/
+├── app/                    # Next.js App Router
+│   ├── api/               # API routes (Hono)
+│   │   └── [[...route]]/  # Catch-all API routes
+│   ├── wiki/              # Wiki pages
+│   └── page.tsx           # Home page
+├── components/            # React components
+│   ├── ui/               # shadcn/ui components
+│   └── *.tsx             # Custom components
+├── db/                   # Database
+│   ├── schema.ts         # Drizzle schema with auto-generated Zod
+│   └── drizzle.ts        # Database connection
+├── hooks/                # TanStack Query hooks
+├── lib/                  # Utilities and services
+│   ├── hono.ts          # RPC client
+│   ├── github.ts        # GitHub API service
+│   ├── analyzer.ts      # AI analysis service
+│   ├── wiki-generator.ts # Wiki generation service
+│   └── inngest-functions.ts # Background jobs
+└── providers/            # React providers
 ```
 
-This architecture provides a robust, type-safe foundation that scales well as your application grows!
+## Key Files to Understand
+
+1. **`src/db/schema.ts`** - Database schema and type definitions
+2. **`src/app/api/[[...route]]/route.ts`** - API router setup
+3. **`src/lib/hono.ts`** - RPC client configuration
+4. **`src/lib/inngest-functions.ts`** - Background job definitions
+5. **`src/hooks/use-get-wiki.ts`** - Main wiki data fetching logic
+
+## Debugging Tips
+
+1. **API Issues:** Check Hono route definitions and Zod validation schemas
+2. **Database Issues:** Use `pnpm drizzle-kit studio` to inspect data
+3. **Background Jobs:** Check Inngest dashboard and console logs
+4. **Type Errors:** Ensure schema changes are pushed to database
+5. **Caching Issues:** Clear TanStack Query cache or adjust query keys
+6. **AI Analysis:** Check OpenAI API limits and response formatting
+
+## Development Best Practices
+
+1. **Always run tests** before committing code
+2. **Use the existing patterns** for API routes, hooks, and components
+3. **Follow TypeScript strictly** - leverage auto-generated types
+4. **Test locally with Inngest** dev server for background jobs
+5. **Use proper query keys** for TanStack Query caching
+6. **Validate environment variables** are set correctly
+7. **Follow the established commit message patterns** from git history
+
+This architecture provides excellent developer experience with full type safety from database to frontend, intelligent caching, and robust background job processing.

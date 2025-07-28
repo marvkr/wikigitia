@@ -71,7 +71,10 @@ export const useGetWiki = (
       return (await response.json()) as WikiResponse;
     },
     enabled: !!repositoryId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh longer
+    gcTime: 10 * 60 * 1000, // 10 minutes - keep in cache longer
     refetchInterval: options?.refetchInterval,
+    refetchOnWindowFocus: false, // Prevent unnecessary refetches
   });
 
   return query;
@@ -129,6 +132,10 @@ export const useGetWikiPage = (repositoryId?: string, subsystemId?: string) => {
       return data.page as WikiPageResponse;
     },
     enabled: !!repositoryId && !!subsystemId,
+    staleTime: 10 * 60 * 1000, // 10 minutes - wiki pages change rarely
+    gcTime: 30 * 60 * 1000, // 30 minutes - keep wiki pages in cache longer
+    refetchOnWindowFocus: false, // Prevent unnecessary refetches
+    refetchOnMount: false, // Use cached data if available
   });
 
   return query;
