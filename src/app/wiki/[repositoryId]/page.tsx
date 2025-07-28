@@ -32,6 +32,49 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Move utility functions outside component to prevent re-creation on each render
+const getTypeIcon = (type: string) => {
+  switch (type.toLowerCase()) {
+    case "feature":
+      return <Package className="h-4 w-4" />;
+    case "service":
+      return <Globe className="h-4 w-4" />;
+    case "utility":
+      return <Settings className="h-4 w-4" />;
+    case "cli":
+      return <Terminal className="h-4 w-4" />;
+    case "api":
+      return <Code className="h-4 w-4" />;
+    case "data":
+      return <Database className="h-4 w-4" />;
+    case "core":
+      return <Layers className="h-4 w-4" />;
+    default:
+      return <BookOpen className="h-4 w-4" />;
+  }
+};
+
+const getTypeColor = (type: string) => {
+  switch (type.toLowerCase()) {
+    case "feature":
+      return "bg-blue-500/10 text-blue-500 border-blue-500/20";
+    case "service":
+      return "bg-green-500/10 text-green-500 border-green-500/20";
+    case "utility":
+      return "bg-purple-500/10 text-purple-500 border-purple-500/20";
+    case "cli":
+      return "bg-orange-500/10 text-orange-500 border-orange-500/20";
+    case "api":
+      return "bg-cyan-500/10 text-cyan-500 border-cyan-500/20";
+    case "data":
+      return "bg-indigo-500/10 text-indigo-500 border-indigo-500/20";
+    case "core":
+      return "bg-red-500/10 text-red-500 border-red-500/20";
+    default:
+      return "bg-muted text-muted-foreground";
+  }
+};
+
 export default function WikiPage() {
   const params = useParams();
   const router = useRouter();
@@ -211,45 +254,10 @@ export default function WikiPage() {
                   const page = wiki.pages.find(
                     (p) => p.subsystem.id === subsystem.id
                   );
-                  const getTypeIcon = (type: string) => {
-                    switch (type.toLowerCase()) {
-                      case "feature":
-                        return <Package className="h-4 w-4" />;
-                      case "service":
-                        return <Globe className="h-4 w-4" />;
-                      case "utility":
-                        return <Settings className="h-4 w-4" />;
-                      case "cli":
-                        return <Terminal className="h-4 w-4" />;
-                      case "api":
-                        return <Code className="h-4 w-4" />;
-                      case "data":
-                        return <Database className="h-4 w-4" />;
-                      case "core":
-                        return <Layers className="h-4 w-4" />;
-                      default:
-                        return <BookOpen className="h-4 w-4" />;
-                    }
-                  };
-
-                  const getTypeColor = (type: string) => {
-                    switch (type.toLowerCase()) {
-                      case "feature":
-                        return "bg-blue-500/10 text-blue-500 border-blue-500/20";
-                      case "service":
-                        return "bg-green-500/10 text-green-500 border-green-500/20";
-                      case "utility":
-                        return "bg-purple-500/10 text-purple-500 border-purple-500/20";
-                      case "cli":
-                        return "bg-orange-500/10 text-orange-500 border-orange-500/20";
-                      case "api":
-                        return "bg-cyan-500/10 text-cyan-500 border-cyan-500/20";
-                      case "data":
-                        return "bg-indigo-500/10 text-indigo-500 border-indigo-500/20";
-                      case "core":
-                        return "bg-red-500/10 text-red-500 border-red-500/20";
-                      default:
-                        return "bg-muted text-muted-foreground";
+                  
+                  const handleCardClick = () => {
+                    if (page) {
+                      router.push(`/wiki/${repositoryId}/${subsystem.id}`);
                     }
                   };
 
@@ -257,11 +265,7 @@ export default function WikiPage() {
                     <Card
                       key={subsystem.id}
                       className="cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={() => {
-                        if (page) {
-                          router.push(`/wiki/${repositoryId}/${subsystem.id}`);
-                        }
-                      }}>
+                      onClick={handleCardClick}>
                       <CardHeader className="pb-2">
                         <div className="flex items-start gap-3">
                           <div
