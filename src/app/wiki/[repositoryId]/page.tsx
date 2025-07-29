@@ -1,8 +1,10 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useGetWiki } from "@/hooks/use-get-wiki";
+import { useGetWiki, useGetWikiPage } from "@/hooks/use-get-wiki";
 import { useCreateWiki } from "@/hooks/use-create-wiki";
+import { useQueryClient } from "@tanstack/react-query";
+import { client } from "@/lib/hono";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +76,92 @@ const getTypeColor = (type: string) => {
       return "bg-muted text-muted-foreground";
   }
 };
+
+// Prefetch component for individual subsystem pages
+function SubsystemCardWithPrefetch({ 
+  subsystem, 
+  repositoryId, 
+  hasPage, 
+  onClick 
+}: { 
+  subsystem: {
+    id: string;
+    name: string;
+    description: string;
+    type: string;
+    files?: string[];
+  }; 
+  repositoryId: string; 
+  hasPage: boolean;
+  onClick: () => void;
+}) {
+  const queryClient = useQueryClient();
+
+  // Prefetch the wiki page data on hover
+  const handleMouseEnter = () => {
+    if (hasPage) {
+      queryClient.prefetchQuery({
+        queryKey: ["wiki-page", repositoryId, subsystem.id],
+        queryFn: async () => {
+          const response = await client.api.wiki[":repositoryId"].page[":subsystemId"].$get({
+            param: { repositoryId, subsystemId: subsystem.id },
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch wiki page");
+          }
+
+          const data = await response.json();
+          return data.page;
+        },
+        staleTime: 15 * 60 * 1000, // 15 minutes - matches useGetWikiPage hook
+      });
+    }
+  };
+
+  return (
+    <Card
+      key={subsystem.id}
+      className="cursor-pointer hover:shadow-md transition-shadow"
+      onClick={onClick}
+      onMouseEnter={handleMouseEnter}>
+      <CardHeader className="pb-2">
+        <div className="flex items-start gap-3">
+          <div
+            className={cn(
+              "p-2 rounded-lg border flex-shrink-0",
+              getTypeColor(subsystem.type)
+            )}>
+            {getTypeIcon(subsystem.type)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <CardTitle className="text-lg">
+              {subsystem.name}
+            </CardTitle>
+            <CardDescription className="text-sm">
+              {subsystem.description}
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="flex items-center justify-between">
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-xs",
+              getTypeColor(subsystem.type)
+            )}>
+            {subsystem.type}
+          </Badge>
+          <span className="text-xs text-muted-foreground">
+            {subsystem.files?.length || 0} files
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function WikiPage() {
   const params = useParams();
@@ -262,45 +350,13 @@ export default function WikiPage() {
                   };
 
                   return (
-                    <Card
+                    <SubsystemCardWithPrefetch
                       key={subsystem.id}
-                      className="cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={handleCardClick}>
-                      <CardHeader className="pb-2">
-                        <div className="flex items-start gap-3">
-                          <div
-                            className={cn(
-                              "p-2 rounded-lg border flex-shrink-0",
-                              getTypeColor(subsystem.type)
-                            )}>
-                            {getTypeIcon(subsystem.type)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <CardTitle className="text-lg">
-                              {subsystem.name}
-                            </CardTitle>
-                            <CardDescription className="text-sm">
-                              {subsystem.description}
-                            </CardDescription>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="flex items-center justify-between">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-xs",
-                              getTypeColor(subsystem.type)
-                            )}>
-                            {subsystem.type}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {subsystem.files?.length || 0} files
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
+                      subsystem={subsystem}
+                      repositoryId={repositoryId}
+                      hasPage={!!page}
+                      onClick={handleCardClick}
+                    />
                   );
                 })}
               </div>

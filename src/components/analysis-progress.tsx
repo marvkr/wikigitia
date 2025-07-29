@@ -116,44 +116,44 @@ export function AnalysisProgress({ jobId, onComplete }: AnalysisProgressProps) {
   };
 
   const getStatusText = () => {
-    if (isLoading) return "Initializing analysis...";
+    if (isLoading) return "Initializing...";
 
     const status = analysisStatus?.status;
 
     if (status === "completed") {
       if (currentPhase === "wiki-generation") {
-        return "Analysis completed! Now generating wiki pages...";
+        return "Creating comprehensive documentation for each subsystem";
       } else if (currentPhase === "completed") {
-        return "Documentation generated successfully!";
+        return "Ready to explore your repository documentation";
       }
     }
 
     switch (status) {
       case "pending":
-        return "Analysis queued - starting soon...";
+        return "Queued for processing";
       case "in_progress":
-        return "Analyzing repository structure and identifying subsystems...";
+        return "Scanning code structure and identifying components";
       case "completed":
-        return "Analysis completed successfully!";
+        return "Repository analysis complete";
       case "failed":
-        return "Analysis failed";
+        return analysisStatus?.error || "Something went wrong";
       default:
-        return "Preparing analysis...";
+        return "Getting ready...";
     }
   };
 
   const getPhaseText = () => {
     const status = analysisStatus?.status;
 
-    if (status === "pending") return "Queued for processing";
-    if (status === "in_progress") return "Analyzing repository structure";
+    if (status === "pending") return "Analysis Starting";
+    if (status === "in_progress") return "Repository Analysis";
     if (status === "completed") {
-      if (currentPhase === "wiki-generation") return "Generating wiki pages";
-      if (currentPhase === "completed") return "Documentation ready!";
-      return "Analysis complete";
+      if (currentPhase === "wiki-generation") return "Wiki Generation";
+      if (currentPhase === "completed") return "Documentation Complete";
+      return "Analysis Complete";
     }
-    if (status === "failed") return "Analysis failed";
-    return "Initializing...";
+    if (status === "failed") return "Analysis Failed";
+    return "Initializing";
   };
 
   if (error) {
@@ -192,11 +192,8 @@ export function AnalysisProgress({ jobId, onComplete }: AnalysisProgressProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Spinner and Status */}
+        {/* Status */}
         <div className="flex items-center justify-center space-x-3">
-          {currentPhase !== "completed" && (
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          )}
           <div className="text-center">
             <div className="text-lg font-medium">{getPhaseText()}</div>
             <div className="text-sm text-muted-foreground mt-1">{getStatusText()}</div>

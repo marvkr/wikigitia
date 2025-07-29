@@ -9,14 +9,16 @@ function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        // With SSR, we usually want to set some default staleTime
-        // above 0 to avoid refetching immediately on the client
-        staleTime: 60 * 1000, // 1 minute default
-        gcTime: 5 * 60 * 1000, // 5 minutes default cache time
-        refetchOnWindowFocus: false, // Prevent unnecessary refetches
+        // Optimized for wiki app where data rarely changes
+        staleTime: 5 * 60 * 1000, // 5 minutes default - longer than before
+        gcTime: 15 * 60 * 1000, // 15 minutes default cache time - longer retention
+        refetchOnWindowFocus: false, // Never refetch on focus
         refetchOnMount: false, // Use cached data when component mounts
-        retry: 3, // Retry failed requests 3 times
+        refetchOnReconnect: false, // Don't refetch on reconnect
+        retry: 2, // Retry failed requests 2 times (reduced from 3)
         retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+        // Only re-render components when actual data changes
+        notifyOnChangeProps: ['data', 'error', 'isLoading'],
       },
     },
   });
